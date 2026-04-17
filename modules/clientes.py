@@ -4,7 +4,6 @@ Módulo de Clientes
 
 import tkinter as tk
 from tkinter import ttk, messagebox
-import re
 
 
 class ClientesModule:
@@ -23,7 +22,7 @@ class ClientesModule:
         frame_lista = tk.LabelFrame(main, text=" 👥 Lista de Clientes ",
                                      bg="#16213e", fg="#e94560",
                                      font=("Segoe UI", 10, "bold"))
-        frame_lista.pack(side="left", fill="both", expand=True, padx=(0, 5))
+        frame_lista.pack(side="left", fill="both", expand=True)
 
         frame_busca = tk.Frame(frame_lista, bg="#16213e")
         frame_busca.pack(fill="x", padx=10, pady=8)
@@ -60,38 +59,6 @@ class ClientesModule:
                       bg=cor, fg="white", font=("Segoe UI", 9, "bold"),
                       bd=0, relief="flat", padx=10, pady=6, cursor="hand2").pack(side="left", padx=3)
 
-        # Formulário
-        frame_form = tk.LabelFrame(main, text=" ✏️ Dados do Cliente ",
-                                    bg="#16213e", fg="#e94560",
-                                    font=("Segoe UI", 10, "bold"), width=380)
-        frame_form.pack(side="left", fill="y", padx=(5, 0))
-        frame_form.pack_propagate(False)
-        frame_form.columnconfigure(1, weight=1)
-
-        self.vars = {}
-        campos = [
-            ("Nome Completo:", "nome"), ("CPF:", "cpf"),
-            ("Telefone:", "telefone"), ("E-mail:", "email"), ("Endereço:", "endereco"),
-        ]
-        for i, (label, chave) in enumerate(campos):
-            tk.Label(frame_form, text=label, bg="#16213e", fg="#a0a0c0",
-                     font=("Segoe UI", 9)).grid(row=i+1, column=0, sticky="w", padx=15, pady=6)
-            var = tk.StringVar()
-            e = tk.Entry(frame_form, textvariable=var, bg="#0f3460", fg="white",
-                         font=("Segoe UI", 10), insertbackground="white",
-                         bd=0, relief="flat", width=28)
-            e.grid(row=i+1, column=1, sticky="ew", padx=(5, 15), pady=6, ipady=5)
-            self.vars[chave] = var
-
-        frame_acao = tk.Frame(frame_form, bg="#16213e")
-        frame_acao.grid(row=10, column=0, columnspan=2, pady=20, padx=15, sticky="ew")
-        tk.Button(frame_acao, text="💾 Salvar Cliente", command=self._salvar_cliente,
-                  bg="#2ecc71", fg="white", font=("Segoe UI", 11, "bold"),
-                  bd=0, relief="flat", pady=10, cursor="hand2").pack(fill="x", pady=(0, 5))
-        tk.Button(frame_acao, text="🔄 Limpar", command=self._limpar_form,
-                  bg="#16213e", fg="#a0a0c0", font=("Segoe UI", 9),
-                  bd=0, relief="flat", pady=6, cursor="hand2").pack(fill="x")
-
     def _carregar_lista(self, busca=""):
         if busca and "Buscar" in busca:
             busca = ""
@@ -103,9 +70,60 @@ class ClientesModule:
                 cl["telefone"] or "—", cl["email"] or "—", cl["endereco"] or "—"
             ))
 
+    def _abrir_formulario(self, cliente=None):
+        """Abre uma janela pop-up para cadastro ou edição."""
+        self.janela_form = tk.Toplevel(self.parent)
+        self.janela_form.title("Cadastro de Cliente" if not cliente else "Editar Cliente")
+        self.janela_form.geometry("450x550")
+        self.janela_form.configure(bg="#1a1a2e")
+        self.janela_form.transient(self.parent.winfo_toplevel())
+        self.janela_form.grab_set()
+        
+        # Centraliza a janela
+        self.janela_form.update_idletasks()
+        x = (self.janela_form.winfo_screenwidth() // 2) - (self.janela_form.winfo_width() // 2)
+        y = (self.janela_form.winfo_screenheight() // 2) - (self.janela_form.winfo_height() // 2)
+        self.janela_form.geometry(f"+{x}+{y}")
+
+        frame_form = tk.Frame(self.janela_form, bg="#16213e", padx=20, pady=20)
+        frame_form.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        tk.Label(frame_form, text="📝 DADOS DO CLIENTE", bg="#16213e", fg="#e94560",
+                 font=("Segoe UI", 12, "bold")).pack(pady=(0, 20))
+
+        self.vars = {}
+        campos = [
+            ("Nome Completo:", "nome"), ("CPF:", "cpf"),
+            ("Telefone:", "telefone"), ("E-mail:", "email"), ("Endereço:", "endereco"),
+        ]
+        
+        for label, chave in campos:
+            f = tk.Frame(frame_form, bg="#16213e")
+            f.pack(fill="x", pady=5)
+            tk.Label(f, text=label, bg="#16213e", fg="#a0a0c0",
+                     font=("Segoe UI", 10)).pack(anchor="w")
+            var = tk.StringVar()
+            e = tk.Entry(f, textvariable=var, bg="#0f3460", fg="white",
+                         font=("Segoe UI", 11), insertbackground="white",
+                         bd=0, relief="flat")
+            e.pack(fill="x", ipady=8, pady=(2, 0))
+            self.vars[chave] = var
+            if cliente:
+                var.set(cliente[chave] or "")
+
+        # Botões
+        btn_salvar = tk.Button(frame_form, text="💾 SALVAR CLIENTE", command=self._salvar_cliente,
+                               bg="#2ecc71", fg="white", font=("Segoe UI", 11, "bold"),
+                               bd=0, relief="flat", pady=12, cursor="hand2")
+        btn_salvar.pack(fill="x", pady=(30, 10))
+        
+        tk.Button(frame_form, text="❌ CANCELAR", command=self.janela_form.destroy,
+                  bg="#16213e", fg="#a0a0c0", font=("Segoe UI", 10),
+                  bd=0, relief="flat", pady=8, cursor="hand2").pack(fill="x")
+
     def _novo_cliente(self):
         self.cliente_editando = None
-        self._limpar_form()
+        self._abrir_formulario()
 
     def _editar_cliente(self):
         sel = self.tree.selection()
@@ -115,15 +133,10 @@ class ClientesModule:
         tags = self.tree.item(sel[0], "tags")
         cid = int(tags[0])
         clientes = self.db.listar_clientes()
-        for cl in clientes:
-            if cl["id"] == cid:
-                self.cliente_editando = cid
-                self.vars["nome"].set(cl["nome"] or "")
-                self.vars["cpf"].set(cl["cpf"] or "")
-                self.vars["telefone"].set(cl["telefone"] or "")
-                self.vars["email"].set(cl["email"] or "")
-                self.vars["endereco"].set(cl["endereco"] or "")
-                break
+        cliente = next((cl for cl in clientes if cl["id"] == cid), None)
+        if cliente:
+            self.cliente_editando = cid
+            self._abrir_formulario(cliente)
 
     def _excluir_cliente(self):
         sel = self.tree.selection()
@@ -152,12 +165,8 @@ class ClientesModule:
         try:
             self.db.salvar_cliente(dados)
             self._carregar_lista()
-            self._limpar_form()
+            if hasattr(self, 'janela_form'):
+                self.janela_form.destroy()
             messagebox.showinfo("Sucesso", f"Cliente '{nome}' salvo!")
         except Exception as e:
             messagebox.showerror("Erro ao Salvar", f"Não foi possível salvar o cliente:\n{str(e)}")
-
-    def _limpar_form(self):
-        self.cliente_editando = None
-        for var in self.vars.values():
-            var.set("")
