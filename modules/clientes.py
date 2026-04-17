@@ -64,7 +64,7 @@ class ClientesModule:
         frame_form = tk.LabelFrame(main, text=" ✏️ Dados do Cliente ",
                                     bg="#16213e", fg="#e94560",
                                     font=("Segoe UI", 10, "bold"), width=380)
-        frame_form.pack(side="right", fill="y", padx=(5, 0))
+        frame_form.pack(side="left", fill="y", padx=(5, 0))
         frame_form.pack_propagate(False)
         frame_form.columnconfigure(1, weight=1)
 

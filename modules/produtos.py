@@ -89,7 +89,7 @@ class ProdutosModule:
         frame_form = tk.LabelFrame(main, text=" ✏️ Cadastro de Produto ",
                                     bg="#16213e", fg="#e94560",
                                     font=("Segoe UI", 10, "bold"), width=400)
-        frame_form.pack(side="right", fill="y", padx=(5, 0))
+        frame_form.pack(side="left", fill="y", padx=(5, 0))
         frame_form.pack_propagate(False)
 
         self.form_widgets = {}
