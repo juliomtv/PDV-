@@ -1,0 +1,603 @@
+"""
+Módulo de Vendas - Interface principal do PDV
+"""
+
+import tkinter as tk
+from tkinter import ttk, messagebox
+import datetime
+
+
+class VendasModule:
+    def __init__(self, parent, db):
+        self.parent = parent
+        self.db = db
+        self.carrinho = []
+        self.cliente_selecionado = None
+        self._build()
+
+    def _build(self):
+        # Layout principal: esquerda = busca+carrinho, direita = totais+pagamento
+        main = tk.Frame(self.parent, bg="#1a1a2e")
+        main.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Coluna esquerda
+        left = tk.Frame(main, bg="#1a1a2e")
+        left.pack(side="left", fill="both", expand=True, padx=(0, 5))
+
+        # --- Busca de produto ---
+        frame_busca = tk.LabelFrame(left, text=" 🔍 Buscar Produto ",
+                                     bg="#16213e", fg="#e94560",
+                                     font=("Segoe UI", 10, "bold"))
+        frame_busca.pack(fill="x", pady=(0, 8))
+
+        busca_inner = tk.Frame(frame_busca, bg="#16213e")
+        busca_inner.pack(fill="x", padx=10, pady=8)
+
+        tk.Label(busca_inner, text="Código/Nome:", bg="#16213e", fg="#e0e0e0",
+                 font=("Segoe UI", 10)).pack(side="left")
+
+        self.entry_busca = tk.Entry(busca_inner, bg="#0f3460", fg="#ffffff",
+                                    font=("Segoe UI", 14, "bold"),
+                                    insertbackground="white", bd=0,
+                                    relief="flat", width=25)
+        self.entry_busca.pack(side="left", padx=8, ipady=6)
+        self.entry_busca.bind("<Return>", self._buscar_produto)
+        self.entry_busca.bind("<KP_Enter>", self._buscar_produto)
+        self.entry_busca.focus()
+
+        tk.Label(busca_inner, text="Qtd:", bg="#16213e", fg="#e0e0e0",
+                 font=("Segoe UI", 10)).pack(side="left", padx=(10, 4))
+
+        self.spin_qtd = tk.Spinbox(busca_inner, from_=0.001, to=9999, increment=1,
+                                    format="%.3f", width=7,
+                                    bg="#0f3460", fg="white", buttonbackground="#0f3460",
+                                    font=("Segoe UI", 12))
+        self.spin_qtd.delete(0, "end")
+        self.spin_qtd.insert(0, "1.000")
+        self.spin_qtd.pack(side="left", padx=4)
+
+        tk.Button(busca_inner, text="➕ ADICIONAR", command=self._buscar_produto,
+                  bg="#e94560", fg="white", font=("Segoe UI", 10, "bold"),
+                  bd=0, relief="flat", padx=12, pady=6, cursor="hand2").pack(side="left", padx=6)
+
+        # --- Carrinho ---
+        frame_carrinho = tk.LabelFrame(left, text=" 🛒 Itens da Venda ",
+                                        bg="#16213e", fg="#e94560",
+                                        font=("Segoe UI", 10, "bold"))
+        frame_carrinho.pack(fill="both", expand=True)
+
+        cols = ("codigo", "produto", "qtd", "unitario", "desconto", "subtotal")
+        self.tree_carrinho = ttk.Treeview(frame_carrinho, columns=cols,
+                                           show="headings", height=15)
+        headers = [("codigo", "Código", 100), ("produto", "Produto", 250),
+                   ("qtd", "Qtd", 70), ("unitario", "Unitário", 90),
+                   ("desconto", "Desc%", 60), ("subtotal", "Subtotal", 100)]
+        for col, txt, w in headers:
+            self.tree_carrinho.heading(col, text=txt)
+            self.tree_carrinho.column(col, width=w, anchor="center" if col != "produto" else "w")
+
+        sb = ttk.Scrollbar(frame_carrinho, orient="vertical",
+                            command=self.tree_carrinho.yview)
+        self.tree_carrinho.configure(yscrollcommand=sb.set)
+        self.tree_carrinho.pack(side="left", fill="both", expand=True)
+        sb.pack(side="right", fill="y")
+
+        # Botões do carrinho
+        frame_btns = tk.Frame(left, bg="#1a1a2e")
+        frame_btns.pack(fill="x", pady=5)
+
+        tk.Button(frame_btns, text="✏️ Editar Item",
+                  command=self._editar_item, bg="#16213e", fg="#e0e0e0",
+                  font=("Segoe UI", 9), bd=0, relief="flat",
+                  padx=10, pady=6, cursor="hand2").pack(side="left", padx=2)
+
+        tk.Button(frame_btns, text="🗑️ Remover Item",
+                  command=self._remover_item, bg="#16213e", fg="#e94560",
+                  font=("Segoe UI", 9), bd=0, relief="flat",
+                  padx=10, pady=6, cursor="hand2").pack(side="left", padx=2)
+
+        tk.Button(frame_btns, text="🧹 Limpar Tudo",
+                  command=self._limpar_carrinho, bg="#16213e", fg="#e0e0e0",
+                  font=("Segoe UI", 9), bd=0, relief="flat",
+                  padx=10, pady=6, cursor="hand2").pack(side="left", padx=2)
+
+        # --- Coluna direita ---
+        right = tk.Frame(main, bg="#1a1a2e", width=320)
+        right.pack(side="right", fill="y", padx=(5, 0))
+        right.pack_propagate(False)
+
+        # Cliente
+        frame_cliente = tk.LabelFrame(right, text=" 👤 Cliente ",
+                                       bg="#16213e", fg="#e94560",
+                                       font=("Segoe UI", 10, "bold"))
+        frame_cliente.pack(fill="x", pady=(0, 8))
+
+        self.lbl_cliente = tk.Label(frame_cliente, text="— Consumidor Final —",
+                                     bg="#16213e", fg="#a0c0ff",
+                                     font=("Segoe UI", 10))
+        self.lbl_cliente.pack(pady=5)
+
+        tk.Button(frame_cliente, text="Selecionar Cliente",
+                  command=self._selecionar_cliente,
+                  bg="#0f3460", fg="white", font=("Segoe UI", 9),
+                  bd=0, relief="flat", padx=10, pady=5, cursor="hand2").pack(pady=(0, 8))
+
+        # Totais
+        frame_totais = tk.LabelFrame(right, text=" 💰 Totais ",
+                                      bg="#16213e", fg="#e94560",
+                                      font=("Segoe UI", 10, "bold"))
+        frame_totais.pack(fill="x", pady=(0, 8))
+
+        def linha(label, var_name, cor="#e0e0e0", tamanho=13):
+            f = tk.Frame(frame_totais, bg="#16213e")
+            f.pack(fill="x", padx=15, pady=2)
+            tk.Label(f, text=label, bg="#16213e", fg="#a0a0c0",
+                     font=("Segoe UI", 9)).pack(side="left")
+            lbl = tk.Label(f, text="R$ 0,00", bg="#16213e", fg=cor,
+                           font=("Segoe UI", tamanho, "bold"))
+            lbl.pack(side="right")
+            setattr(self, var_name, lbl)
+
+        linha("Subtotal:", "lbl_subtotal")
+        linha("Desconto:", "lbl_desconto", "#f39c12")
+
+        separator = tk.Frame(frame_totais, bg="#0f3460", height=2)
+        separator.pack(fill="x", padx=10, pady=5)
+
+        linha("TOTAL:", "lbl_total", "#2ecc71", 18)
+
+        # Desconto global
+        frame_desc = tk.Frame(frame_totais, bg="#16213e")
+        frame_desc.pack(fill="x", padx=15, pady=(0, 10))
+        tk.Label(frame_desc, text="Desconto geral (%):",
+                 bg="#16213e", fg="#a0a0c0", font=("Segoe UI", 9)).pack(side="left")
+        self.entry_desconto = tk.Entry(frame_desc, width=8, bg="#0f3460", fg="white",
+                                       font=("Segoe UI", 11), insertbackground="white",
+                                       bd=0, relief="flat", justify="center")
+        self.entry_desconto.insert(0, "0")
+        self.entry_desconto.pack(side="right", ipady=4, padx=5)
+        self.entry_desconto.bind("<KeyRelease>", lambda e: self._atualizar_totais())
+
+        # Pagamento
+        frame_pag = tk.LabelFrame(right, text=" 💳 Pagamento ",
+                                   bg="#16213e", fg="#e94560",
+                                   font=("Segoe UI", 10, "bold"))
+        frame_pag.pack(fill="x", pady=(0, 8))
+
+        self.var_forma = tk.StringVar(value="dinheiro")
+        formas = [("💵 Dinheiro", "dinheiro"), ("💳 Cartão Débito", "debito"),
+                  ("💳 Cartão Crédito", "credito"), ("📱 PIX", "pix"),
+                  ("🎫 Vale", "vale")]
+        for txt, val in formas:
+            rb = tk.Radiobutton(frame_pag, text=txt, variable=self.var_forma,
+                                value=val, bg="#16213e", fg="#e0e0e0",
+                                selectcolor="#0f3460", activebackground="#16213e",
+                                font=("Segoe UI", 10),
+                                command=self._toggle_troco)
+            rb.pack(anchor="w", padx=15, pady=2)
+
+        frame_pago = tk.Frame(frame_pag, bg="#16213e")
+        frame_pago.pack(fill="x", padx=15, pady=5)
+        tk.Label(frame_pago, text="Valor pago:", bg="#16213e", fg="#a0a0c0",
+                 font=("Segoe UI", 9)).pack(side="left")
+        self.entry_pago = tk.Entry(frame_pago, width=12, bg="#0f3460", fg="white",
+                                   font=("Segoe UI", 12, "bold"),
+                                   insertbackground="white", bd=0, relief="flat",
+                                   justify="right")
+        self.entry_pago.insert(0, "0,00")
+        self.entry_pago.pack(side="right", ipady=5)
+        self.entry_pago.bind("<KeyRelease>", self._calcular_troco)
+
+        f_troco = tk.Frame(frame_pag, bg="#16213e")
+        f_troco.pack(fill="x", padx=15, pady=(0, 10))
+        tk.Label(f_troco, text="Troco:", bg="#16213e", fg="#a0a0c0",
+                 font=("Segoe UI", 9)).pack(side="left")
+        self.lbl_troco = tk.Label(f_troco, text="R$ 0,00", bg="#16213e",
+                                   fg="#2ecc71", font=("Segoe UI", 13, "bold"))
+        self.lbl_troco.pack(side="right")
+
+        # Botão finalizar
+        tk.Button(right, text="✅  FINALIZAR VENDA",
+                  command=self._finalizar_venda,
+                  bg="#2ecc71", fg="white",
+                  font=("Segoe UI", 14, "bold"),
+                  bd=0, relief="flat", pady=16,
+                  cursor="hand2", activebackground="#27ae60").pack(fill="x", pady=5)
+
+        tk.Button(right, text="🖨️  REIMPRIMIR ÚLTIMO",
+                  command=self._reimprimir,
+                  bg="#16213e", fg="#a0a0c0",
+                  font=("Segoe UI", 10),
+                  bd=0, relief="flat", pady=8,
+                  cursor="hand2").pack(fill="x")
+
+        self.ultima_venda_id = None
+
+    def _buscar_produto(self, event=None):
+        termo = self.entry_busca.get().strip()
+        if not termo:
+            return
+
+        # Tenta por código de barras primeiro
+        produto = self.db.buscar_produto_por_codigo(termo)
+        if produto:
+            self._adicionar_ao_carrinho(produto)
+            return
+
+        # Busca por nome
+        produtos = self.db.listar_produtos(busca=termo)
+        if not produtos:
+            messagebox.showwarning("Produto não encontrado",
+                                   f"Nenhum produto encontrado para: {termo}")
+            return
+
+        if len(produtos) == 1:
+            self._adicionar_ao_carrinho(produtos[0])
+        else:
+            self._dialogo_selecionar_produto(produtos)
+
+    def _adicionar_ao_carrinho(self, produto):
+        try:
+            qtd_str = self.spin_qtd.get().replace(",", ".")
+            qtd = float(qtd_str)
+            if qtd <= 0:
+                messagebox.showwarning("Quantidade", "Quantidade deve ser maior que zero.")
+                return
+        except ValueError:
+            qtd = 1.0
+
+        if produto["estoque_atual"] < qtd:
+            resp = messagebox.askyesno("Estoque insuficiente",
+                                        f"Estoque disponível: {produto['estoque_atual']:.3f}\n"
+                                        f"Deseja adicionar mesmo assim?")
+            if not resp:
+                return
+
+        # Verifica se já está no carrinho
+        for item in self.carrinho:
+            if item["produto_id"] == produto["id"]:
+                item["quantidade"] += qtd
+                item["subtotal"] = item["quantidade"] * item["preco_unitario"] * (1 - item["desconto"] / 100)
+                self._atualizar_tree()
+                self.entry_busca.delete(0, "end")
+                self._atualizar_totais()
+                return
+
+        item = {
+            "produto_id": produto["id"],
+            "codigo_barras": produto["codigo_barras"] or "",
+            "nome": produto["nome"],
+            "quantidade": qtd,
+            "preco_unitario": produto["preco_venda"],
+            "desconto": 0.0,
+            "subtotal": qtd * produto["preco_venda"],
+        }
+        self.carrinho.append(item)
+        self._atualizar_tree()
+        self.entry_busca.delete(0, "end")
+        self.spin_qtd.delete(0, "end")
+        self.spin_qtd.insert(0, "1.000")
+        self._atualizar_totais()
+        self.entry_busca.focus()
+
+    def _dialogo_selecionar_produto(self, produtos):
+        dlg = tk.Toplevel(self.parent)
+        dlg.title("Selecionar Produto")
+        dlg.geometry("600x400")
+        dlg.configure(bg="#1a1a2e")
+        dlg.grab_set()
+
+        tk.Label(dlg, text="Múltiplos produtos encontrados — selecione um:",
+                 bg="#1a1a2e", fg="#e0e0e0", font=("Segoe UI", 11)).pack(pady=10, padx=10)
+
+        cols = ("codigo", "nome", "preco", "estoque")
+        tree = ttk.Treeview(dlg, columns=cols, show="headings", height=12)
+        tree.heading("codigo", text="Código")
+        tree.heading("nome", text="Nome")
+        tree.heading("preco", text="Preço")
+        tree.heading("estoque", text="Estoque")
+        tree.column("codigo", width=120)
+        tree.column("nome", width=260)
+        tree.column("preco", width=90, anchor="center")
+        tree.column("estoque", width=80, anchor="center")
+
+        for p in produtos:
+            tree.insert("", "end", values=(
+                p["codigo_barras"] or "—", p["nome"],
+                f"R$ {p['preco_venda']:.2f}", f"{p['estoque_atual']:.3f}"
+            ), tags=(str(p["id"]),))
+
+        tree.pack(fill="both", expand=True, padx=10)
+
+        def confirmar(event=None):
+            sel = tree.selection()
+            if not sel:
+                return
+            tags = tree.item(sel[0], "tags")
+            pid = int(tags[0])
+            prod = self.db.buscar_produto_por_id(pid)
+            if prod:
+                dlg.destroy()
+                self._adicionar_ao_carrinho(prod)
+
+        tree.bind("<Double-1>", confirmar)
+        tk.Button(dlg, text="Selecionar", command=confirmar,
+                  bg="#e94560", fg="white", font=("Segoe UI", 10, "bold"),
+                  bd=0, relief="flat", padx=15, pady=8).pack(pady=10)
+
+    def _atualizar_tree(self):
+        for row in self.tree_carrinho.get_children():
+            self.tree_carrinho.delete(row)
+        for item in self.carrinho:
+            self.tree_carrinho.insert("", "end", values=(
+                item["codigo_barras"],
+                item["nome"],
+                f"{item['quantidade']:.3f}",
+                f"R$ {item['preco_unitario']:.2f}",
+                f"{item['desconto']:.1f}%",
+                f"R$ {item['subtotal']:.2f}",
+            ))
+
+    def _atualizar_totais(self):
+        subtotal = sum(i["subtotal"] for i in self.carrinho)
+        try:
+            desc_pct = float(self.entry_desconto.get().replace(",", "."))
+            if desc_pct < 0:
+                desc_pct = 0
+            max_desc = float(self.db.get_config("desconto_maximo", "20"))
+            if desc_pct > max_desc:
+                desc_pct = max_desc
+                self.entry_desconto.delete(0, "end")
+                self.entry_desconto.insert(0, str(max_desc))
+        except ValueError:
+            desc_pct = 0
+
+        desconto_val = subtotal * desc_pct / 100
+        total = subtotal - desconto_val
+
+        self.lbl_subtotal.config(text=f"R$ {subtotal:.2f}")
+        self.lbl_desconto.config(text=f"R$ {desconto_val:.2f}")
+        self.lbl_total.config(text=f"R$ {total:.2f}")
+
+        self._calcular_troco()
+
+    def _calcular_troco(self, event=None):
+        try:
+            total_str = self.lbl_total.cget("text").replace("R$ ", "").replace(",", ".")
+            total = float(total_str)
+        except ValueError:
+            total = 0
+        try:
+            pago = float(self.entry_pago.get().replace(",", ".").replace("R$", "").strip())
+        except ValueError:
+            pago = 0
+        troco = max(0, pago - total)
+        self.lbl_troco.config(text=f"R$ {troco:.2f}")
+
+    def _toggle_troco(self):
+        forma = self.var_forma.get()
+        if forma == "dinheiro":
+            self.entry_pago.config(state="normal")
+        else:
+            self.entry_pago.delete(0, "end")
+            total_str = self.lbl_total.cget("text").replace("R$ ", "")
+            self.entry_pago.insert(0, total_str)
+            self.lbl_troco.config(text="R$ 0,00")
+
+    def _editar_item(self):
+        sel = self.tree_carrinho.selection()
+        if not sel:
+            messagebox.showinfo("Aviso", "Selecione um item para editar.")
+            return
+        idx = self.tree_carrinho.index(sel[0])
+        item = self.carrinho[idx]
+
+        dlg = tk.Toplevel(self.parent)
+        dlg.title("Editar Item")
+        dlg.geometry("380x280")
+        dlg.configure(bg="#1a1a2e")
+        dlg.grab_set()
+
+        tk.Label(dlg, text=item["nome"], bg="#1a1a2e", fg="#e94560",
+                 font=("Segoe UI", 12, "bold"), wraplength=340).pack(pady=15)
+
+        def campo(label, default):
+            f = tk.Frame(dlg, bg="#1a1a2e")
+            f.pack(fill="x", padx=20, pady=5)
+            tk.Label(f, text=label, bg="#1a1a2e", fg="#e0e0e0",
+                     width=16, anchor="w").pack(side="left")
+            e = tk.Entry(f, bg="#16213e", fg="white", font=("Segoe UI", 11),
+                         insertbackground="white", bd=0, relief="flat", width=14)
+            e.insert(0, str(default))
+            e.pack(side="right", ipady=5)
+            return e
+
+        e_qtd = campo("Quantidade:", f"{item['quantidade']:.3f}")
+        e_preco = campo("Preço unitário:", f"{item['preco_unitario']:.2f}")
+        e_desc = campo("Desconto (%):", f"{item['desconto']:.1f}")
+
+        def salvar():
+            try:
+                item["quantidade"] = float(e_qtd.get().replace(",", "."))
+                item["preco_unitario"] = float(e_preco.get().replace(",", "."))
+                item["desconto"] = float(e_desc.get().replace(",", "."))
+                item["subtotal"] = item["quantidade"] * item["preco_unitario"] * (1 - item["desconto"] / 100)
+                self._atualizar_tree()
+                self._atualizar_totais()
+                dlg.destroy()
+            except ValueError:
+                messagebox.showerror("Erro", "Valores inválidos.", parent=dlg)
+
+        tk.Button(dlg, text="Salvar", command=salvar,
+                  bg="#2ecc71", fg="white", font=("Segoe UI", 11, "bold"),
+                  bd=0, relief="flat", padx=20, pady=8).pack(pady=15)
+
+    def _remover_item(self):
+        sel = self.tree_carrinho.selection()
+        if not sel:
+            return
+        idx = self.tree_carrinho.index(sel[0])
+        del self.carrinho[idx]
+        self._atualizar_tree()
+        self._atualizar_totais()
+
+    def _limpar_carrinho(self):
+        if self.carrinho and messagebox.askyesno("Limpar", "Deseja limpar todos os itens?"):
+            self.carrinho = []
+            self._atualizar_tree()
+            self._atualizar_totais()
+            self.cliente_selecionado = None
+            self.lbl_cliente.config(text="— Consumidor Final —")
+
+    def _selecionar_cliente(self):
+        dlg = tk.Toplevel(self.parent)
+        dlg.title("Selecionar Cliente")
+        dlg.geometry("600x450")
+        dlg.configure(bg="#1a1a2e")
+        dlg.grab_set()
+
+        tk.Label(dlg, text="Clientes", bg="#1a1a2e", fg="#e94560",
+                 font=("Segoe UI", 14, "bold")).pack(pady=10)
+
+        frame_b = tk.Frame(dlg, bg="#1a1a2e")
+        frame_b.pack(fill="x", padx=10)
+        e = tk.Entry(frame_b, bg="#16213e", fg="white", font=("Segoe UI", 11),
+                     insertbackground="white", bd=0, relief="flat")
+        e.pack(side="left", fill="x", expand=True, ipady=6, padx=(0, 5))
+
+        cols = ("id", "nome", "cpf", "telefone")
+        tree = ttk.Treeview(dlg, columns=cols, show="headings", height=14)
+        for col, txt, w in [("id","ID",50),("nome","Nome",250),("cpf","CPF",120),("telefone","Telefone",120)]:
+            tree.heading(col, text=txt)
+            tree.column(col, width=w)
+        tree.pack(fill="both", expand=True, padx=10, pady=10)
+
+        def carregar(busca=""):
+            for r in tree.get_children():
+                tree.delete(r)
+            for cl in self.db.listar_clientes(busca=busca):
+                tree.insert("", "end", values=(cl["id"], cl["nome"], cl["cpf"] or "", cl["telefone"] or ""))
+
+        e.bind("<KeyRelease>", lambda ev: carregar(e.get()))
+        carregar()
+
+        def confirmar(event=None):
+            sel = tree.selection()
+            if not sel:
+                return
+            vals = tree.item(sel[0], "values")
+            self.cliente_selecionado = {"id": vals[0], "nome": vals[1]}
+            self.lbl_cliente.config(text=f"👤 {vals[1]}")
+            dlg.destroy()
+
+        tree.bind("<Double-1>", confirmar)
+
+        f_btns = tk.Frame(dlg, bg="#1a1a2e")
+        f_btns.pack(fill="x", padx=10, pady=5)
+        tk.Button(f_btns, text="Selecionar", command=confirmar,
+                  bg="#2ecc71", fg="white", font=("Segoe UI", 10, "bold"),
+                  bd=0, relief="flat", padx=15, pady=7).pack(side="right")
+        tk.Button(f_btns, text="Sem cliente", command=lambda: (
+            setattr(self, "cliente_selecionado", None),
+            self.lbl_cliente.config(text="— Consumidor Final —"),
+            dlg.destroy()
+        ), bg="#16213e", fg="#e0e0e0", font=("Segoe UI", 10),
+                  bd=0, relief="flat", padx=15, pady=7).pack(side="right", padx=5)
+
+        tk.Button(frame_b, text="🔍", command=lambda: carregar(e.get()),
+                  bg="#0f3460", fg="white", bd=0, relief="flat", padx=10, pady=6).pack(side="right")
+
+    def _finalizar_venda(self):
+        if not self.carrinho:
+            messagebox.showwarning("Carrinho vazio", "Adicione produtos antes de finalizar.")
+            return
+
+        total_str = self.lbl_total.cget("text").replace("R$ ", "").replace(",", ".")
+        total = float(total_str)
+        subtotal_str = self.lbl_subtotal.cget("text").replace("R$ ", "").replace(",", ".")
+        subtotal = float(subtotal_str)
+        desconto_str = self.lbl_desconto.cget("text").replace("R$ ", "").replace(",", ".")
+        desconto = float(desconto_str)
+
+        forma = self.var_forma.get()
+        try:
+            pago = float(self.entry_pago.get().replace(",", ".").replace("R$", "").strip())
+        except ValueError:
+            pago = total
+
+        if forma == "dinheiro" and pago < total:
+            messagebox.showwarning("Pagamento insuficiente",
+                                   f"Valor pago R$ {pago:.2f} é menor que o total R$ {total:.2f}")
+            return
+
+        troco = max(0, pago - total)
+
+        dados_venda = {
+            "cliente_id": self.cliente_selecionado["id"] if self.cliente_selecionado else None,
+            "subtotal": subtotal,
+            "desconto": desconto,
+            "total": total,
+            "forma_pagamento": forma,
+            "valor_pago": pago,
+            "troco": troco,
+        }
+        itens = [{
+            "produto_id": it["produto_id"],
+            "quantidade": it["quantidade"],
+            "preco_unitario": it["preco_unitario"],
+            "desconto_item": it["desconto"],
+            "subtotal": it["subtotal"],
+        } for it in self.carrinho]
+
+        venda_id = self.db.registrar_venda(dados_venda, itens)
+        self.ultima_venda_id = venda_id
+
+        # Imprimir cupom
+        from modules.impressora import ImpressoraManager
+        impressora = ImpressoraManager(self.db)
+        impressora.imprimir_cupom(venda_id, self.carrinho, dados_venda, self.cliente_selecionado)
+
+        messagebox.showinfo("✅ Venda Finalizada",
+                            f"Venda #{venda_id} realizada!\n"
+                            f"Total: R$ {total:.2f}\n"
+                            f"Troco: R$ {troco:.2f}")
+
+        self.carrinho = []
+        self._atualizar_tree()
+        self._atualizar_totais()
+        self.cliente_selecionado = None
+        self.lbl_cliente.config(text="— Consumidor Final —")
+        self.entry_desconto.delete(0, "end")
+        self.entry_desconto.insert(0, "0")
+        self.entry_pago.delete(0, "end")
+        self.entry_pago.insert(0, "0,00")
+        self.lbl_troco.config(text="R$ 0,00")
+        self.entry_busca.focus()
+
+    def _reimprimir(self):
+        if not self.ultima_venda_id:
+            messagebox.showinfo("Aviso", "Nenhuma venda realizada nesta sessão.")
+            return
+        venda, itens = self.db.buscar_venda(self.ultima_venda_id)
+        if not venda:
+            return
+        carrinho_reimp = [{
+            "produto_id": i["produto_id"],
+            "nome": i["produto_nome"],
+            "codigo_barras": i["codigo_barras"] or "",
+            "quantidade": i["quantidade"],
+            "preco_unitario": i["preco_unitario"],
+            "desconto": i["desconto_item"],
+            "subtotal": i["subtotal"],
+        } for i in itens]
+        dados_venda = {
+            "subtotal": venda["subtotal"],
+            "desconto": venda["desconto"],
+            "total": venda["total"],
+            "forma_pagamento": venda["forma_pagamento"],
+            "valor_pago": venda["valor_pago"],
+            "troco": venda["troco"],
+        }
+        from modules.impressora import ImpressoraManager
+        impressora = ImpressoraManager(self.db)
+        impressora.imprimir_cupom(self.ultima_venda_id, carrinho_reimp, dados_venda, None)

@@ -1,0 +1,24 @@
+# PDV Mercado Pro - Dependências
+# Instale com: pip install -r requirements.txt
+
+# Dependências obrigatórias (já incluídas no Python)
+# tkinter - interface gráfica (builtin)
+# sqlite3 - banco de dados (builtin)
+
+# Dependências opcionais (melhoram funcionalidades)
+
+# Impressão no Windows (opcional)
+# pywin32>=306
+
+# Impressão ESC/POS para impressoras térmicas (opcional)
+# python-escpos>=3.0
+
+# Leitor de código de barras por câmera (opcional)
+# opencv-python>=4.8
+# pyzbar>=0.1.9
+
+# Geração de relatórios PDF (opcional)
+# reportlab>=4.0
+
+# Exportação Excel (opcional)
+# openpyxl>=3.1
