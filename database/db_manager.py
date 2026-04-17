@@ -9,9 +9,9 @@ import datetime
 
 class DatabaseManager:
     def __init__(self):
-        # Salva banco no diretório do usuário para persistência
-        home = os.path.expanduser("~")
-        self.db_path = os.path.join(home, "pdv_mercado.db")
+        # Salva banco no diretório local do programa
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.db_path = os.path.join(base_dir, "pdv_mercado.db")
 
     def get_conn(self):
         conn = sqlite3.connect(self.db_path)
