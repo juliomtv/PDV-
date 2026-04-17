@@ -250,8 +250,8 @@ class ProdutosModule:
         pass
 
     def _novo_produto(self):
-        self._limpar_form()
         self.produto_editando = None
+        self._limpar_form()
 
     def _editar_produto(self):
         sel = self.tree.selection()
@@ -356,10 +356,13 @@ class ProdutosModule:
             "ativo": 1,
         }
 
-        self.db.salvar_produto(dados)
-        self._carregar_lista()
-        self._limpar_form()
-        messagebox.showinfo("Sucesso", f"Produto '{nome}' salvo com sucesso!")
+        try:
+            self.db.salvar_produto(dados)
+            self._carregar_lista()
+            self._limpar_form()
+            messagebox.showinfo("Sucesso", f"Produto '{nome}' salvo com sucesso!")
+        except Exception as e:
+            messagebox.showerror("Erro ao Salvar", f"Não foi possível salvar o produto:\n{str(e)}")
 
     def _limpar_form(self):
         self.produto_editando = None

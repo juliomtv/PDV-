@@ -37,7 +37,9 @@ class PDVApp:
 
         self._setup_styles()
         self._build_ui()
-        self._abrir_modulo("vendas")
+        # Não abre módulo automaticamente aqui para permitir que a logo apareça no início
+        # Se preferir que abra em vendas, descomente a linha abaixo
+        # self._abrir_modulo("vendas")
 
         # Centraliza janela
         self.root.update_idletasks()
@@ -157,6 +159,44 @@ class PDVApp:
         # Área de conteúdo principal
         self.content_frame = tk.Frame(self.root, bg="#1a1a2e")
         self.content_frame.pack(fill="both", expand=True, side="left")
+        
+        # Logo no fundo
+        self._setup_background_logo()
+
+    def _setup_background_logo(self):
+        """Configura a logo no fundo da área de conteúdo."""
+        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo.png")
+        if os.path.exists(logo_path):
+            try:
+                from PIL import Image, ImageTk
+                # Carrega a imagem original
+                self.img_orig = Image.open(logo_path)
+                self.logo_label = tk.Label(self.content_frame, bg="#1a1a2e")
+                self.logo_label.place(relx=0.5, rely=0.5, anchor="center")
+                
+                # Bind para redimensionar quando a janela mudar
+                self.content_frame.bind("<Configure>", self._resize_logo)
+            except Exception as e:
+                print(f"Erro ao carregar logo: {e}")
+
+    def _resize_logo(self, event):
+        """Redimensiona a logo mantendo a proporção."""
+        if hasattr(self, 'img_orig'):
+            from PIL import Image, ImageTk
+            # Calcula o novo tamanho (ex: 40% da área de conteúdo)
+            target_w = event.width // 2
+            target_h = event.height // 2
+            
+            # Mantém proporção
+            orig_w, orig_h = self.img_orig.size
+            ratio = min(target_w/orig_w, target_h/orig_h)
+            new_w = int(orig_w * ratio)
+            new_h = int(orig_h * ratio)
+            
+            if new_w > 0 and new_h > 0:
+                img_resized = self.img_orig.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                self.photo_logo = ImageTk.PhotoImage(img_resized)
+                self.logo_label.config(image=self.photo_logo)
 
     def _atualizar_hora(self):
         import datetime

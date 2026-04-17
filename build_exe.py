@@ -37,6 +37,7 @@ def build():
         "--name", "PDV_Mercado_Pro",          # Nome do executável
         "--add-data", f"modules{os.pathsep}modules",     # Inclui módulos
         "--add-data", f"database{os.pathsep}database",   # Inclui database
+        "--add-data", f"logo.png{os.pathsep}.",          # Inclui logo se existir (será ignorado se não houver)
         "--hidden-import", "tkinter",
         "--hidden-import", "tkinter.ttk",
         "--hidden-import", "sqlite3",

@@ -104,8 +104,8 @@ class ClientesModule:
             ))
 
     def _novo_cliente(self):
-        self._limpar_form()
         self.cliente_editando = None
+        self._limpar_form()
 
     def _editar_cliente(self):
         sel = self.tree.selection()
@@ -149,10 +149,13 @@ class ClientesModule:
             "email": self.vars["email"].get().strip(),
             "endereco": self.vars["endereco"].get().strip(),
         }
-        self.db.salvar_cliente(dados)
-        self._carregar_lista()
-        self._limpar_form()
-        messagebox.showinfo("Sucesso", f"Cliente '{nome}' salvo!")
+        try:
+            self.db.salvar_cliente(dados)
+            self._carregar_lista()
+            self._limpar_form()
+            messagebox.showinfo("Sucesso", f"Cliente '{nome}' salvo!")
+        except Exception as e:
+            messagebox.showerror("Erro ao Salvar", f"Não foi possível salvar o cliente:\n{str(e)}")
 
     def _limpar_form(self):
         self.cliente_editando = None
