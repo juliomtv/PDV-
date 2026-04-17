@@ -41,11 +41,19 @@ class PDVApp:
         # Se preferir que abra em vendas, descomente a linha abaixo
         # self._abrir_modulo("vendas")
 
-        # Centraliza janela
-        self.root.update_idletasks()
-        x = (self.root.winfo_screenwidth() // 2) - (self.root.winfo_width() // 2)
-        y = (self.root.winfo_screenheight() // 2) - (self.root.winfo_height() // 2)
-        self.root.geometry(f"+{x}+{y}")
+        # Inicia maximizado
+        try:
+            if sys.platform == "win32":
+                self.root.state("zoomed")
+            else:
+                self.root.attributes("-zoomed", True)
+        except Exception:
+            # Fallback caso o sistema não suporte maximizar via comando
+            self.root.geometry("1280x800")
+            self.root.update_idletasks()
+            x = (self.root.winfo_screenwidth() // 2) - (self.root.winfo_width() // 2)
+            y = (self.root.winfo_screenheight() // 2) - (self.root.winfo_height() // 2)
+            self.root.geometry(f"+{x}+{y}")
 
     def _setup_styles(self):
         style = ttk.Style()
