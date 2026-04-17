@@ -49,7 +49,7 @@ class ClientesModule:
         self.tree.bind("<Double-1>", lambda e: self._editar_cliente())
 
         frame_btns = tk.Frame(frame_lista, bg="#16213e")
-        frame_btns.pack(fill="x", padx=10, pady=5, side="top")
+        frame_btns.pack(fill="x", padx=10, pady=5, side="bottom")
         for txt, cmd, cor in [
             ("➕ Novo Cliente", self._novo_cliente, "#2ecc71"),
             ("✏️ Editar", self._editar_cliente, "#0f3460"),
@@ -57,7 +57,7 @@ class ClientesModule:
         ]:
             tk.Button(frame_btns, text=txt, command=cmd,
                       bg=cor, fg="white", font=("Segoe UI", 9, "bold"),
-                      bd=0, relief="flat", padx=10, pady=6, cursor="hand2").pack(side="left", padx=3, fill="x", expand=False)
+                      bd=0, relief="flat", padx=10, pady=6, cursor="hand2").pack(side="left", padx=3)
 
     def _carregar_lista(self, busca=""):
         if busca and "Buscar" in busca:
@@ -74,7 +74,7 @@ class ClientesModule:
         """Abre uma janela pop-up para cadastro ou edição."""
         self.janela_form = tk.Toplevel(self.parent)
         self.janela_form.title("Cadastro de Cliente" if not cliente else "Editar Cliente")
-        self.janela_form.geometry("450x550")
+        self.janela_form.geometry("500x650")
         self.janela_form.configure(bg="#1a1a2e")
         self.janela_form.transient(self.parent.winfo_toplevel())
         self.janela_form.grab_set()
