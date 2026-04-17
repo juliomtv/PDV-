@@ -26,11 +26,22 @@ class PDVApp:
         self.root.title("PDV Mercado Pro - Sistema de Ponto de Venda")
         self.root.geometry("1280x800")
         self.root.minsize(1024, 700)
-        self.root.configure(bg="#1a1a2e")
 
         # Inicializa banco de dados
         self.db = DatabaseManager()
         self.db.inicializar()
+
+        # Carrega cores personalizadas
+        self.cores = {
+            "header": self.db.get_config("cor_header", "#0f3460"),
+            "sidebar": self.db.get_config("cor_sidebar", "#16213e"),
+            "fundo": self.db.get_config("cor_fundo", "#1a1a2e"),
+            "acentuado": self.db.get_config("cor_acentuado", "#e94560"),
+            "botao": self.db.get_config("cor_botao", "#16213e"),
+            "texto": self.db.get_config("cor_texto", "#e0e0e0"),
+        }
+
+        self.root.configure(bg=self.cores["fundo"])
 
         # Variável para módulo ativo
         self.modulo_ativo = None
@@ -60,83 +71,83 @@ class PDVApp:
         style.theme_use("clam")
 
         # Cores principais
-        style.configure(".", background="#1a1a2e", foreground="#e0e0e0", font=("Segoe UI", 10))
-        style.configure("TFrame", background="#1a1a2e")
-        style.configure("TLabel", background="#1a1a2e", foreground="#e0e0e0")
-        style.configure("TButton", background="#16213e", foreground="#e0e0e0",
+        style.configure(".", background=self.cores["fundo"], foreground=self.cores["texto"], font=("Segoe UI", 10))
+        style.configure("TFrame", background=self.cores["fundo"])
+        style.configure("TLabel", background=self.cores["fundo"], foreground=self.cores["texto"])
+        style.configure("TButton", background=self.cores["botao"], foreground=self.cores["texto"],
                         borderwidth=0, relief="flat", padding=(10, 8))
         style.map("TButton",
-                  background=[("active", "#0f3460"), ("pressed", "#e94560")],
+                  background=[("active", self.cores["header"]), ("pressed", self.cores["acentuado"])],
                   foreground=[("active", "#ffffff")])
 
-        style.configure("Accent.TButton", background="#e94560", foreground="white",
+        style.configure("Accent.TButton", background=self.cores["acentuado"], foreground="white",
                         font=("Segoe UI", 11, "bold"), padding=(15, 10))
         style.map("Accent.TButton",
-                  background=[("active", "#c73652"), ("pressed", "#a02843")])
+                  background=[("active", self.cores["header"]), ("pressed", self.cores["acentuado"])])
 
         style.configure("Success.TButton", background="#2ecc71", foreground="white",
                         font=("Segoe UI", 11, "bold"), padding=(15, 10))
         style.map("Success.TButton",
                   background=[("active", "#27ae60"), ("pressed", "#1e8449")])
 
-        style.configure("TEntry", fieldbackground="#16213e", foreground="#e0e0e0",
-                        borderwidth=1, relief="solid", insertcolor="#e0e0e0")
-        style.configure("TCombobox", fieldbackground="#16213e", foreground="#e0e0e0",
-                        background="#16213e", selectbackground="#0f3460")
-        style.map("TCombobox", fieldbackground=[("readonly", "#16213e")])
+        style.configure("TEntry", fieldbackground=self.cores["sidebar"], foreground=self.cores["texto"],
+                        borderwidth=1, relief="solid", insertcolor=self.cores["texto"])
+        style.configure("TCombobox", fieldbackground=self.cores["sidebar"], foreground=self.cores["texto"],
+                        background=self.cores["sidebar"], selectbackground=self.cores["header"])
+        style.map("TCombobox", fieldbackground=[("readonly", self.cores["sidebar"])])
 
-        style.configure("Treeview", background="#16213e", foreground="#e0e0e0",
-                        fieldbackground="#16213e", borderwidth=0, rowheight=28)
-        style.configure("Treeview.Heading", background="#0f3460", foreground="#e0e0e0",
+        style.configure("Treeview", background=self.cores["sidebar"], foreground=self.cores["texto"],
+                        fieldbackground=self.cores["sidebar"], borderwidth=0, rowheight=28)
+        style.configure("Treeview.Heading", background=self.cores["header"], foreground=self.cores["texto"],
                         font=("Segoe UI", 10, "bold"), relief="flat")
-        style.map("Treeview", background=[("selected", "#e94560")],
+        style.map("Treeview", background=[("selected", self.cores["acentuado"])],
                   foreground=[("selected", "white")])
 
-        style.configure("TNotebook", background="#1a1a2e", borderwidth=0)
-        style.configure("TNotebook.Tab", background="#16213e", foreground="#e0e0e0",
+        style.configure("TNotebook", background=self.cores["fundo"], borderwidth=0)
+        style.configure("TNotebook.Tab", background=self.cores["sidebar"], foreground=self.cores["texto"],
                         padding=(15, 8), borderwidth=0)
         style.map("TNotebook.Tab",
-                  background=[("selected", "#0f3460"), ("active", "#0f3460")],
-                  foreground=[("selected", "#e94560")])
+                  background=[("selected", self.cores["header"]), ("active", self.cores["header"])],
+                  foreground=[("selected", self.cores["acentuado"])])
 
-        style.configure("TLabelframe", background="#16213e", foreground="#e0e0e0",
+        style.configure("TLabelframe", background=self.cores["sidebar"], foreground=self.cores["texto"],
                         borderwidth=1, relief="solid")
-        style.configure("TLabelframe.Label", background="#16213e", foreground="#e94560",
+        style.configure("TLabelframe.Label", background=self.cores["sidebar"], foreground=self.cores["acentuado"],
                         font=("Segoe UI", 10, "bold"))
 
-        style.configure("TScrollbar", background="#16213e", troughcolor="#1a1a2e",
-                        borderwidth=0, arrowcolor="#e0e0e0")
+        style.configure("TScrollbar", background=self.cores["sidebar"], troughcolor=self.cores["fundo"],
+                        borderwidth=0, arrowcolor=self.cores["texto"])
 
-        style.configure("TSpinbox", fieldbackground="#16213e", foreground="#e0e0e0",
-                        background="#16213e", insertcolor="#e0e0e0")
+        style.configure("TSpinbox", fieldbackground=self.cores["sidebar"], foreground=self.cores["texto"],
+                        background=self.cores["sidebar"], insertcolor=self.cores["texto"])
 
     def _build_ui(self):
         # Header
-        header = tk.Frame(self.root, bg="#0f3460", height=60)
+        header = tk.Frame(self.root, bg=self.cores["header"], height=60)
         header.pack(fill="x", side="top")
         header.pack_propagate(False)
 
         tk.Label(header, text="🛒 PDV MERCADO PRO",
                  font=("Segoe UI", 18, "bold"),
-                 bg="#0f3460", fg="#e94560").pack(side="left", padx=20, pady=10)
+                 bg=self.cores["header"], fg=self.cores["acentuado"]).pack(side="left", padx=20, pady=10)
 
         # Info de usuário/data no header
         import datetime
         data_str = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
         self.lbl_hora = tk.Label(header, text=data_str,
                                   font=("Segoe UI", 10),
-                                  bg="#0f3460", fg="#a0a0c0")
+                                  bg=self.cores["header"], fg="#a0a0c0")
         self.lbl_hora.pack(side="right", padx=20)
         self._atualizar_hora()
 
         # Sidebar de navegação
-        sidebar = tk.Frame(self.root, bg="#16213e", width=200)
+        sidebar = tk.Frame(self.root, bg=self.cores["sidebar"], width=200)
         sidebar.pack(fill="y", side="left")
         sidebar.pack_propagate(False)
 
         tk.Label(sidebar, text="MENU",
                  font=("Segoe UI", 9, "bold"),
-                 bg="#16213e", fg="#606080").pack(pady=(20, 10), padx=15, anchor="w")
+                 bg=self.cores["sidebar"], fg="#606080").pack(pady=(20, 10), padx=15, anchor="w")
 
         self.nav_buttons = {}
         menus = [
@@ -151,8 +162,8 @@ class PDVApp:
         for texto, modulo in menus:
             btn = tk.Button(sidebar, text=texto,
                             font=("Segoe UI", 11),
-                            bg="#16213e", fg="#c0c0d0",
-                            activebackground="#0f3460", activeforeground="#e94560",
+                            bg=self.cores["sidebar"], fg="#c0c0d0",
+                            activebackground=self.cores["header"], activeforeground=self.cores["acentuado"],
                             bd=0, relief="flat", anchor="w",
                             padx=20, pady=12, cursor="hand2",
                             command=lambda m=modulo: self._abrir_modulo(m))
@@ -162,10 +173,10 @@ class PDVApp:
         # Versão no rodapé da sidebar
         tk.Label(sidebar, text="v1.0.0",
                  font=("Segoe UI", 8),
-                 bg="#16213e", fg="#404060").pack(side="bottom", pady=10)
+                 bg=self.cores["sidebar"], fg="#404060").pack(side="bottom", pady=10)
 
         # Área de conteúdo principal
-        self.content_frame = tk.Frame(self.root, bg="#1a1a2e")
+        self.content_frame = tk.Frame(self.root, bg=self.cores["fundo"])
         self.content_frame.pack(fill="both", expand=True, side="left")
         
         # Logo no fundo
@@ -179,7 +190,7 @@ class PDVApp:
                 from PIL import Image, ImageTk
                 # Carrega a imagem original
                 self.img_orig = Image.open(logo_path)
-                self.logo_label = tk.Label(self.content_frame, bg="#1a1a2e")
+                self.logo_label = tk.Label(self.content_frame, bg=self.cores["fundo"])
                 self.logo_label.place(relx=0.5, rely=0.5, anchor="center")
                 
                 # Bind para redimensionar quando a janela mudar
@@ -219,9 +230,9 @@ class PDVApp:
         # Destaca botão ativo
         for key, btn in self.nav_buttons.items():
             if key == nome:
-                btn.config(bg="#0f3460", fg="#e94560", font=("Segoe UI", 11, "bold"))
+                btn.config(bg=self.cores["header"], fg=self.cores["acentuado"], font=("Segoe UI", 11, "bold"))
             else:
-                btn.config(bg="#16213e", fg="#c0c0d0", font=("Segoe UI", 11))
+                btn.config(bg=self.cores["sidebar"], fg="#c0c0d0", font=("Segoe UI", 11))
 
         # Instancia módulo
         modulos = {

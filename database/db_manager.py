@@ -155,6 +155,12 @@ class DatabaseManager:
             ("largura_cupom", "48", "Largura do cupom em caracteres"),
             ("desconto_maximo", "20", "Desconto máximo permitido (%)"),
             ("moeda", "R$", "Símbolo da moeda"),
+            ("cor_header", "#0f3460", "Cor do cabeçalho"),
+            ("cor_sidebar", "#16213e", "Cor da barra lateral"),
+            ("cor_fundo", "#1a1a2e", "Cor de fundo principal"),
+            ("cor_acentuado", "#e94560", "Cor de destaque (acentuado)"),
+            ("cor_botao", "#16213e", "Cor padrão dos botões"),
+            ("cor_texto", "#e0e0e0", "Cor padrão do texto"),
         ]
 
         for chave, valor, desc in configs_padrao:

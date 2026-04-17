@@ -42,6 +42,10 @@ class ConfiguracoesModule:
         nb.add(tab_fornecedores, text="  🚚 Fornecedores  ")
         self._build_fornecedores(tab_fornecedores)
 
+        tab_cores = tk.Frame(nb, bg="#1a1a2e")
+        nb.add(tab_cores, text="  🎨 Personalização  ")
+        self._build_cores(tab_cores)
+
     def _build_empresa(self, parent):
         frame = tk.Frame(parent, bg="#1a1a2e")
         frame.pack(padx=40, pady=20, fill="x")
@@ -202,6 +206,71 @@ class ConfiguracoesModule:
         for chave, var in self.vars_pdv.items():
             self.db.set_config(chave, var.get())
         messagebox.showinfo("Sucesso", "Parâmetros salvos!")
+
+    def _build_cores(self, parent):
+        from tkinter import colorchooser
+        frame = tk.Frame(parent, bg="#1a1a2e")
+        frame.pack(padx=40, pady=20, fill="x")
+
+        tk.Label(frame, text="Cores do Sistema", bg="#1a1a2e", fg="#e94560",
+                 font=("Segoe UI", 14, "bold")).pack(pady=(0, 20))
+
+        self.vars_cores = {}
+        cores = [
+            ("Cor do Cabeçalho:", "cor_header"),
+            ("Cor da Barra Lateral:", "cor_sidebar"),
+            ("Cor de Fundo Principal:", "cor_fundo"),
+            ("Cor de Destaque:", "cor_acentuado"),
+            ("Cor dos Botões:", "cor_botao"),
+            ("Cor do Texto:", "cor_texto"),
+        ]
+
+        for label, chave in cores:
+            f = tk.Frame(frame, bg="#1a1a2e")
+            f.pack(fill="x", pady=6)
+            tk.Label(f, text=label, bg="#1a1a2e", fg="#a0a0c0",
+                     font=("Segoe UI", 10), width=22, anchor="w").pack(side="left")
+            
+            cor_atual = self.db.get_config(chave)
+            var = tk.StringVar(value=cor_atual)
+            self.vars_cores[chave] = var
+
+            # Mostra a cor atual num pequeno frame
+            amostra = tk.Frame(f, bg=cor_atual, width=30, height=20, bd=1, relief="solid")
+            amostra.pack(side="left", padx=5)
+
+            e = tk.Entry(f, textvariable=var, bg="#16213e", fg="white",
+                         font=("Segoe UI", 11), insertbackground="white",
+                         bd=0, relief="flat", width=15)
+            e.pack(side="left", ipady=6, padx=5)
+
+            def escolher_cor(v=var, a=amostra):
+                cor = colorchooser.askcolor(color=v.get(), title="Escolha a cor")[1]
+                if cor:
+                    v.set(cor)
+                    a.config(bg=cor)
+
+            tk.Button(f, text="🎨 Selecionar", command=escolher_cor,
+                      bg="#0f3460", fg="white", font=("Segoe UI", 9),
+                      bd=0, relief="flat", padx=10, pady=5).pack(side="left", padx=5)
+
+        tk.Button(frame, text="💾 Salvar Cores e Reiniciar",
+                  command=self._salvar_cores,
+                  bg="#2ecc71", fg="white", font=("Segoe UI", 11, "bold"),
+                  bd=0, relief="flat", padx=20, pady=10, cursor="hand2").pack(pady=20)
+        
+        tk.Label(frame, text="* Algumas alterações podem exigir a reinicialização do programa para serem aplicadas totalmente.",
+                 bg="#1a1a2e", fg="#a0a0c0", font=("Segoe UI", 9, "italic")).pack()
+
+    def _salvar_cores(self):
+        for chave, var in self.vars_cores.items():
+            self.db.set_config(chave, var.get())
+        if messagebox.askyesno("Sucesso", "Cores salvas! Deseja reiniciar o programa agora para aplicar as alterações?"):
+            # Tenta reiniciar o programa
+            import os
+            import sys
+            python = sys.executable
+            os.execl(python, python, *sys.argv)
 
     def _build_categorias(self, parent):
         frame = tk.Frame(parent, bg="#1a1a2e")
