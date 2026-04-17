@@ -40,6 +40,9 @@ class PDVApp:
             "botao": self.db.get_config("cor_botao", "#16213e"),
             "texto": self.db.get_config("cor_texto", "#e0e0e0"),
         }
+        
+        # Carrega nome da empresa
+        self.nome_empresa = self.db.get_config("nome_empresa", "PDV MERCADO PRO").upper()
 
         self.root.configure(bg=self.cores["fundo"])
 
@@ -127,9 +130,10 @@ class PDVApp:
         header.pack(fill="x", side="top")
         header.pack_propagate(False)
 
-        tk.Label(header, text="🛒 PDV MERCADO PRO",
+        self.lbl_titulo = tk.Label(header, text=f"🛒 {self.nome_empresa}",
                  font=("Segoe UI", 18, "bold"),
-                 bg=self.cores["header"], fg=self.cores["acentuado"]).pack(side="left", padx=20, pady=10)
+                 bg=self.cores["header"], fg=self.cores["acentuado"])
+        self.lbl_titulo.pack(side="left", padx=20, pady=10)
 
         # Info de usuário/data no header
         import datetime

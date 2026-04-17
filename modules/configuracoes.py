@@ -81,7 +81,11 @@ class ConfiguracoesModule:
     def _salvar_empresa(self):
         for chave, var in self.vars_empresa.items():
             self.db.set_config(chave, var.get())
-        messagebox.showinfo("Sucesso", "Dados da empresa salvos!")
+        if messagebox.askyesno("Sucesso", "Dados da empresa salvos! Deseja reiniciar o programa para aplicar as mudanças no cabeçalho?"):
+            import os
+            import sys
+            python = sys.executable
+            os.execl(python, python, *sys.argv)
 
     def _build_impressora(self, parent):
         frame = tk.Frame(parent, bg="#1a1a2e")
