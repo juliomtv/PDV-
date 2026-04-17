@@ -18,12 +18,13 @@ class ClientesModule:
         main = tk.Frame(self.parent, bg="#1a1a2e")
         main.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # Lista
+        # Container para a lista e busca
         frame_lista = tk.LabelFrame(main, text=" 👥 Lista de Clientes ",
                                      bg="#16213e", fg="#e94560",
                                      font=("Segoe UI", 10, "bold"))
-        frame_lista.pack(side="left", fill="both", expand=True)
+        frame_lista.pack(side="top", fill="both", expand=True)
 
+        # Barra de Busca
         frame_busca = tk.Frame(frame_lista, bg="#16213e")
         frame_busca.pack(fill="x", padx=10, pady=8)
 
@@ -35,29 +36,36 @@ class ClientesModule:
         self.entry_busca.bind("<FocusIn>", lambda e: self.entry_busca.delete(0, "end") if "Buscar" in self.entry_busca.get() else None)
         self.entry_busca.bind("<KeyRelease>", lambda e: self._carregar_lista(self.entry_busca.get()))
 
+        # Treeview e Scrollbar
+        frame_tree = tk.Frame(frame_lista, bg="#16213e")
+        frame_tree.pack(fill="both", expand=True, padx=10, pady=5)
+
         cols = ("id", "nome", "cpf", "telefone", "email", "endereco")
-        self.tree = ttk.Treeview(frame_lista, columns=cols, show="headings", height=22)
+        self.tree = ttk.Treeview(frame_tree, columns=cols, show="headings")
         for col, txt, w in [("id","ID",40),("nome","Nome",220),("cpf","CPF",120),
                              ("telefone","Telefone",120),("email","E-mail",180),("endereco","Endereço",200)]:
             self.tree.heading(col, text=txt)
             self.tree.column(col, width=w, anchor="center" if col not in ("nome","email","endereco") else "w")
 
-        sb = ttk.Scrollbar(frame_lista, orient="vertical", command=self.tree.yview)
+        sb = ttk.Scrollbar(frame_tree, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=sb.set)
+        
         self.tree.pack(side="left", fill="both", expand=True)
         sb.pack(side="right", fill="y")
         self.tree.bind("<Double-1>", lambda e: self._editar_cliente())
 
-        frame_btns = tk.Frame(frame_lista, bg="#16213e")
-        frame_btns.pack(fill="x", padx=10, pady=5, side="bottom")
+        # Painel de Botões (Abaixo da lista, mas dentro do frame principal)
+        frame_btns = tk.Frame(main, bg="#1a1a2e")
+        frame_btns.pack(fill="x", pady=(10, 0))
+        
         for txt, cmd, cor in [
             ("➕ Novo Cliente", self._novo_cliente, "#2ecc71"),
             ("✏️ Editar", self._editar_cliente, "#0f3460"),
             ("🗑️ Excluir", self._excluir_cliente, "#e94560"),
         ]:
             tk.Button(frame_btns, text=txt, command=cmd,
-                      bg=cor, fg="white", font=("Segoe UI", 9, "bold"),
-                      bd=0, relief="flat", padx=10, pady=6, cursor="hand2").pack(side="left", padx=3)
+                      bg=cor, fg="white", font=("Segoe UI", 10, "bold"),
+                      bd=0, relief="flat", padx=20, pady=10, cursor="hand2").pack(side="left", padx=5)
 
     def _carregar_lista(self, busca=""):
         if busca and "Buscar" in busca:
