@@ -49,7 +49,7 @@ class ClientesModule:
         self.tree.bind("<Double-1>", lambda e: self._editar_cliente())
 
         frame_btns = tk.Frame(frame_lista, bg="#16213e")
-        frame_btns.pack(fill="x", padx=10, pady=5)
+        frame_btns.pack(fill="x", padx=10, pady=5, side="top")
         for txt, cmd, cor in [
             ("➕ Novo Cliente", self._novo_cliente, "#2ecc71"),
             ("✏️ Editar", self._editar_cliente, "#0f3460"),
@@ -57,7 +57,7 @@ class ClientesModule:
         ]:
             tk.Button(frame_btns, text=txt, command=cmd,
                       bg=cor, fg="white", font=("Segoe UI", 9, "bold"),
-                      bd=0, relief="flat", padx=10, pady=6, cursor="hand2").pack(side="left", padx=3)
+                      bd=0, relief="flat", padx=10, pady=6, cursor="hand2").pack(side="left", padx=3, fill="x", expand=False)
 
     def _carregar_lista(self, busca=""):
         if busca and "Buscar" in busca:
