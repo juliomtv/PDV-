@@ -188,7 +188,7 @@ class PDVApp:
 
     def _setup_background_logo(self):
         """Configura a logo no fundo da área de conteúdo."""
-        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo.png")
+        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo/logo.png")
         if os.path.exists(logo_path):
             try:
                 from PIL import Image, ImageTk
