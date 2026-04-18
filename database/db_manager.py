@@ -3,15 +3,26 @@ Gerenciador do Banco de Dados SQLite
 """
 
 import sqlite3
-import os
+import os, sys
 import datetime
 
 
 class DatabaseManager:
     def __init__(self):
-        # Salva banco no diretório local do programa
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.db_path = os.path.join(base_dir, "pdv_mercado.db")
+        # Tenta APPDATA primeiro, depois USERPROFILE, depois pasta do executável como último recurso
+        appdata = (
+            os.getenv("APPDATA") or
+            os.path.join(os.getenv("USERPROFILE", ""), "AppData", "Roaming")
+        )
+        appdata_dir = os.path.join(appdata, "SistemaPDV")
+
+        try:
+            os.makedirs(appdata_dir, exist_ok=True)
+        except Exception:
+            # Último recurso: salva na pasta do executável
+            appdata_dir = os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(__file__))
+
+        self.db_path = os.path.join(appdata_dir, "pdv_mercado.db")
 
     def get_conn(self):
         conn = sqlite3.connect(self.db_path)
@@ -398,7 +409,6 @@ class DatabaseManager:
                 VALUES (?,?,?,?,?,?)
             """, (venda_id, item["produto_id"], item["quantidade"],
                   item["preco_unitario"], item.get("desconto_item", 0), item["subtotal"]))
-            # Debita estoque
             prod = c.execute("SELECT estoque_atual FROM produtos WHERE id=?", (item["produto_id"],)).fetchone()
             if prod:
                 novo_est = prod["estoque_atual"] - item["quantidade"]

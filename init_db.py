@@ -1,29 +1,21 @@
-import sys
 import os
+import sqlite3
 
-# Adiciona o diretório atual ao path para importar o db_manager
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+class DatabaseManager:
+    def __init__(self):
+        appdata_dir = os.path.join(os.getenv("APPDATA"), "SistemaPDV")
+        os.makedirs(appdata_dir, exist_ok=True)
+        self.db_path = os.path.join(appdata_dir, "pdv_mercado.db")
+        self.conn = sqlite3.connect(self.db_path)
 
-from database.db_manager import DatabaseManager
-
-def main():
-    print("Iniciando criação do banco de dados local...")
-    db = DatabaseManager()
-    
-    # O caminho do banco agora é relativo ao diretório do projeto
-    print(f"O banco de dados será criado em: {db.db_path}")
-    
-    try:
-        db.inicializar()
-        print("Banco de dados inicializado com sucesso!")
-        
-        if os.path.exists(db.db_path):
-            print(f"Arquivo '{os.path.basename(db.db_path)}' criado com sucesso no diretório raiz.")
-        else:
-            print("Erro: O arquivo do banco de dados não foi encontrado após a inicialização.")
-            
-    except Exception as e:
-        print(f"Erro ao inicializar o banco de dados: {e}")
-
-if __name__ == "__main__":
-    main()
+    def inicializar(self):
+        c = self.conn.cursor()
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS configuracoes (
+                chave TEXT PRIMARY KEY,
+                valor TEXT,
+                descricao TEXT
+            )
+        """)
+        # insere dados padrão se necessário
+        self.conn.commit()

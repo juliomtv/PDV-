@@ -20,10 +20,19 @@ from modules.estoque import EstoqueModule
 from modules.clientes import ClientesModule
 
 
+def resource_path(relative_path):
+    """Retorna o caminho correto tanto em desenvolvimento quanto no .exe (PyInstaller)."""
+    if hasattr(sys, '_MEIPASS'):
+        # Rodando como executável PyInstaller - arquivos ficam em _MEIPASS
+        return os.path.join(sys._MEIPASS, relative_path)
+    # Rodando como script Python normal
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
+
+
 class PDVApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("PDV Mercado Pro - Sistema de Ponto de Venda")
+        self.root.title("MARTINS MIX")
         self.root.geometry("1280x800")
         self.root.minsize(1024, 700)
 
@@ -40,9 +49,9 @@ class PDVApp:
             "botao": self.db.get_config("cor_botao", "#16213e"),
             "texto": self.db.get_config("cor_texto", "#e0e0e0"),
         }
-        
+
         # Carrega nome da empresa
-        self.nome_empresa = self.db.get_config("nome_empresa", "PDV MERCADO PRO").upper()
+        self.nome_empresa = self.db.get_config("nome_empresa", "MARTINS MIX").upper()
 
         self.root.configure(bg=self.cores["fundo"])
 
@@ -51,9 +60,6 @@ class PDVApp:
 
         self._setup_styles()
         self._build_ui()
-        # Não abre módulo automaticamente aqui para permitir que a logo apareça no início
-        # Se preferir que abra em vendas, descomente a linha abaixo
-        # self._abrir_modulo("vendas")
 
         # Inicia maximizado
         try:
@@ -62,7 +68,6 @@ class PDVApp:
             else:
                 self.root.attributes("-zoomed", True)
         except Exception:
-            # Fallback caso o sistema não suporte maximizar via comando
             self.root.geometry("1280x800")
             self.root.update_idletasks()
             x = (self.root.winfo_screenwidth() // 2) - (self.root.winfo_width() // 2)
@@ -73,7 +78,6 @@ class PDVApp:
         style = ttk.Style()
         style.theme_use("clam")
 
-        # Cores principais
         style.configure(".", background=self.cores["fundo"], foreground=self.cores["texto"], font=("Segoe UI", 10))
         style.configure("TFrame", background=self.cores["fundo"])
         style.configure("TLabel", background=self.cores["fundo"], foreground=self.cores["texto"])
@@ -131,16 +135,15 @@ class PDVApp:
         header.pack_propagate(False)
 
         self.lbl_titulo = tk.Label(header, text=f"🛒 {self.nome_empresa}",
-                 font=("Segoe UI", 18, "bold"),
-                 bg=self.cores["header"], fg=self.cores["acentuado"])
+                                   font=("Segoe UI", 18, "bold"),
+                                   bg=self.cores["header"], fg=self.cores["acentuado"])
         self.lbl_titulo.pack(side="left", padx=20, pady=10)
 
-        # Info de usuário/data no header
         import datetime
         data_str = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
         self.lbl_hora = tk.Label(header, text=data_str,
-                                  font=("Segoe UI", 10),
-                                  bg=self.cores["header"], fg="#a0a0c0")
+                                 font=("Segoe UI", 10),
+                                 bg=self.cores["header"], fg="#a0a0c0")
         self.lbl_hora.pack(side="right", padx=20)
         self._atualizar_hora()
 
@@ -174,7 +177,6 @@ class PDVApp:
             btn.pack(fill="x")
             self.nav_buttons[modulo] = btn
 
-        # Versão no rodapé da sidebar
         tk.Label(sidebar, text="v1.0.0",
                  font=("Segoe UI", 8),
                  bg=self.cores["sidebar"], fg="#404060").pack(side="bottom", pady=10)
@@ -182,40 +184,38 @@ class PDVApp:
         # Área de conteúdo principal
         self.content_frame = tk.Frame(self.root, bg=self.cores["fundo"])
         self.content_frame.pack(fill="both", expand=True, side="left")
-        
+
         # Logo no fundo
         self._setup_background_logo()
 
     def _setup_background_logo(self):
         """Configura a logo no fundo da área de conteúdo."""
-        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo/logo.png")
+        # ✅ Usa resource_path para funcionar tanto no script quanto no .exe
+        logo_path = resource_path(os.path.join("logo", "logo.png"))
         if os.path.exists(logo_path):
             try:
                 from PIL import Image, ImageTk
-                # Carrega a imagem original
                 self.img_orig = Image.open(logo_path)
                 self.logo_label = tk.Label(self.content_frame, bg=self.cores["fundo"])
                 self.logo_label.place(relx=0.5, rely=0.5, anchor="center")
-                
-                # Bind para redimensionar quando a janela mudar
                 self.content_frame.bind("<Configure>", self._resize_logo)
             except Exception as e:
                 print(f"Erro ao carregar logo: {e}")
+        else:
+            print(f"Logo não encontrada em: {logo_path}")
 
     def _resize_logo(self, event):
         """Redimensiona a logo mantendo a proporção."""
         if hasattr(self, 'img_orig'):
             from PIL import Image, ImageTk
-            # Calcula o novo tamanho (ex: 40% da área de conteúdo)
             target_w = event.width // 2
             target_h = event.height // 2
-            
-            # Mantém proporção
+
             orig_w, orig_h = self.img_orig.size
-            ratio = min(target_w/orig_w, target_h/orig_h)
+            ratio = min(target_w / orig_w, target_h / orig_h)
             new_w = int(orig_w * ratio)
             new_h = int(orig_h * ratio)
-            
+
             if new_w > 0 and new_h > 0:
                 img_resized = self.img_orig.resize((new_w, new_h), Image.Resampling.LANCZOS)
                 self.photo_logo = ImageTk.PhotoImage(img_resized)
@@ -227,18 +227,15 @@ class PDVApp:
         self.root.after(1000, self._atualizar_hora)
 
     def _abrir_modulo(self, nome):
-        # Limpa conteúdo atual
         for widget in self.content_frame.winfo_children():
             widget.destroy()
 
-        # Destaca botão ativo
         for key, btn in self.nav_buttons.items():
             if key == nome:
                 btn.config(bg=self.cores["header"], fg=self.cores["acentuado"], font=("Segoe UI", 11, "bold"))
             else:
                 btn.config(bg=self.cores["sidebar"], fg="#c0c0d0", font=("Segoe UI", 11))
 
-        # Instancia módulo
         modulos = {
             "vendas": VendasModule,
             "produtos": ProdutosModule,
