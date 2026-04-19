@@ -57,7 +57,7 @@ class PDVApp:
 
         # Variável para módulo ativo
         self.modulo_ativo = None
-        self.sidebar_visivel = True
+        self.sidebar_visivel = False # Inicia escondido conforme solicitado
 
         self._setup_styles()
         self._build_ui()
@@ -159,10 +159,10 @@ class PDVApp:
         self.lbl_hora.pack(side="right", padx=20)
         self._atualizar_hora()
 
-        # Sidebar de navegação
+        # Sidebar de navegação (inicia escondida)
         self.sidebar = tk.Frame(self.root, bg=self.cores["sidebar"], width=200)
-        self.sidebar.pack(fill="y", side="left")
         self.sidebar.pack_propagate(False)
+        # self.sidebar.pack(fill="y", side="left") # Removido para iniciar escondido
 
         tk.Label(self.sidebar, text="MENU",
                  font=("Segoe UI", 9, "bold"),
@@ -189,7 +189,7 @@ class PDVApp:
             btn.pack(fill="x")
             self.nav_buttons[modulo] = btn
 
-        tk.Label(self.sidebar, text="v1.1.0",
+        tk.Label(self.sidebar, text="v1.1.1",
                  font=("Segoe UI", 8),
                  bg=self.cores["sidebar"], fg="#404060").pack(side="bottom", pady=10)
 
