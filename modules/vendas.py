@@ -93,7 +93,7 @@ class VendasModule:
         frame_btns = tk.Frame(left, bg="#1a1a2e")
         frame_btns.pack(fill="x", pady=5)
 
-        tk.Button(frame_btns, text="✏️ Editar Item",
+        tk.Button(frame_btns, text="✏️ Editar Item (F3)",
                   command=self._editar_item, bg="#16213e", fg="#e0e0e0",
                   font=("Segoe UI", 9), bd=0, relief="flat",
                   padx=10, pady=6, cursor="hand2").pack(side="left", padx=2)
@@ -103,7 +103,7 @@ class VendasModule:
                   font=("Segoe UI", 9), bd=0, relief="flat",
                   padx=10, pady=6, cursor="hand2").pack(side="left", padx=2)
 
-        tk.Button(frame_btns, text="🧹 Limpar Tudo",
+        tk.Button(frame_btns, text="🧹 Limpar Tudo (Ctrl+L)",
                   command=self._limpar_carrinho, bg="#16213e", fg="#e0e0e0",
                   font=("Segoe UI", 9), bd=0, relief="flat",
                   padx=10, pady=6, cursor="hand2").pack(side="left", padx=2)
@@ -233,14 +233,22 @@ class VendasModule:
         
         # Outros Atalhos
         root.bind("<F2>", lambda e: (self.entry_busca.focus_set(), "break")[1])
+        root.bind("<F3>", lambda e: (self._editar_item(), "break")[1])
         root.bind("<F4>", lambda e: (self.spin_qtd.focus_set(), "break")[1])
         root.bind("<F5>", lambda e: (self._alterar_valor_atalho(), "break")[1])
         root.bind("<F6>", lambda e: (self._remover_item(), "break")[1])
         root.bind("<F7>", lambda e: (self._buscar_produto(), "break")[1])
         root.bind("<F8>", lambda e: (self._finalizar_venda(), "break")[1])
         
+        # Navegação no Carrinho
+        self.entry_busca.bind("<Down>", self._focar_carrinho)
+        self.tree_carrinho.bind("<Up>", self._navegar_carrinho)
+        self.tree_carrinho.bind("<Down>", self._navegar_carrinho)
+        
         # Atalhos de Controle
         root.bind("<Control-D>", lambda e: (self.entry_desconto.focus_set(), "break")[1])
+        root.bind("<Control-l>", lambda e: (self._limpar_carrinho(), "break")[1])
+        root.bind("<Control-L>", lambda e: (self._limpar_carrinho(), "break")[1])
         root.bind("<Control-F11>", lambda e: (self._consultar_vendas_atalho(), "break")[1])
         root.bind("<Control-Shift-KeyPress>", lambda e: (self._desagrupar_atalho(e), "break")[1])
 
@@ -259,6 +267,27 @@ class VendasModule:
     def _on_f12(self, event=None):
         self._set_forma_pagamento("pix")
         return "break"
+
+    def _focar_carrinho(self, event=None):
+        if self.tree_carrinho.get_children():
+            self.tree_carrinho.focus_set()
+            primeiro = self.tree_carrinho.get_children()[0]
+            self.tree_carrinho.selection_set(primeiro)
+            self.tree_carrinho.see(primeiro)
+        return "break"
+
+    def _navegar_carrinho(self, event):
+        sel = self.tree_carrinho.selection()
+        if not sel:
+            return
+        
+        itens = self.tree_carrinho.get_children()
+        idx = itens.index(sel[0])
+        
+        if event.keysym == "Up" and idx == 0:
+            self.entry_busca.focus_set()
+            return "break"
+        return
 
     def _set_forma_pagamento(self, forma):
         self.var_forma.set(forma)
@@ -312,6 +341,8 @@ class VendasModule:
             messagebox.showinfo("Atalho Ctrl+Shift", "Função de desagrupar produtos acionada.")
 
     def _on_busca_key(self, event):
+        if event.keysym.startswith("F") and event.keysym not in ("F2", "F4"):
+            return "break"
         if event.keysym in ("Return", "KP_Enter", "Escape", "Up", "Down", "Left", "Right"):
             if event.keysym == "Escape":
                 self._fechar_lista_busca()
