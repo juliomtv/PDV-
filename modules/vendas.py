@@ -215,7 +215,7 @@ class VendasModule:
 
         tk.Button(right, text="🖨️  REIMPRIMIR ÚLTIMO",
                   command=self._reimprimir,
-                  bg="#16213e", fg="#a0a0c0",
+                  bg="#16213e", fg="#a0c0ff",
                   font=("Segoe UI", 10),
                   bd=0, relief="flat", pady=8,
                   cursor="hand2").pack(fill="x")
@@ -529,39 +529,76 @@ class VendasModule:
         
         idx = self.tree_carrinho.index(sel[0])
         item = self.carrinho[idx]
+        preco_base = item['preco_unitario']
         
         dlg = tk.Toplevel(self.parent)
         dlg.title(f"Editar Item: {item['nome']}")
-        dlg.geometry("300x250")
+        dlg.geometry("350x350")
         dlg.transient(self.parent)
         dlg.grab_set()
         dlg.resizable(False, False)
         
         tk.Label(dlg, text=f"Produto: {item['nome']}", font=("Segoe UI", 10, "bold")).pack(pady=10)
         
+        # Quantidade
         tk.Label(dlg, text="Quantidade:").pack()
         ent_qtd = tk.Entry(dlg, justify="center")
         ent_qtd.insert(0, str(int(item['quantidade'])))
         ent_qtd.pack(pady=5)
         ent_qtd.focus()
-        
-        tk.Label(dlg, text="Desconto (%):").pack()
-        ent_desc = tk.Entry(dlg, justify="center")
-        ent_desc.insert(0, str(item['desconto']))
-        ent_desc.pack(pady=5)
+
+        # Frame Descontos
+        f_desc = tk.LabelFrame(dlg, text=" Desconto ", padx=10, pady=10)
+        f_desc.pack(padx=20, pady=10, fill="x")
+
+        # Desconto em Porcentagem
+        tk.Label(f_desc, text="Porcentagem (%):").grid(row=0, column=0, sticky="w")
+        ent_perc = tk.Entry(f_desc, width=12, justify="center")
+        ent_perc.insert(0, f"{item['desconto']:.2f}")
+        ent_perc.grid(row=0, column=1, pady=2)
+
+        # Desconto em Valor Real
+        tk.Label(f_desc, text="Valor Real (R$):").grid(row=1, column=0, sticky="w")
+        ent_real = tk.Entry(f_desc, width=12, justify="center")
+        valor_desc_atual = (preco_base * item['desconto'] / 100)
+        ent_real.insert(0, f"{valor_desc_atual:.2f}")
+        ent_real.grid(row=1, column=1, pady=2)
+
+        def atualizar_por_perc(event=None):
+            try:
+                p = float(ent_perc.get().replace(",", "."))
+                v = preco_base * (p / 100)
+                ent_real.delete(0, "end")
+                ent_real.insert(0, f"{v:.2f}")
+            except ValueError: pass
+
+        def atualizar_por_real(event=None):
+            try:
+                v = float(ent_real.get().replace(",", "."))
+                p = (v / preco_base) * 100 if preco_base > 0 else 0
+                ent_perc.delete(0, "end")
+                ent_perc.insert(0, f"{p:.2f}")
+            except ValueError: pass
+
+        ent_perc.bind("<KeyRelease>", atualizar_por_perc)
+        ent_real.bind("<KeyRelease>", atualizar_por_real)
         
         def salvar():
             try:
                 nova_qtd = int(ent_qtd.get())
-                novo_desc = float(ent_desc.get().replace(",", "."))
+                novo_desc_perc = float(ent_perc.get().replace(",", "."))
                 
                 if nova_qtd <= 0:
                     messagebox.showerror("Erro", "A quantidade deve ser maior que zero.")
                     return
                 
+                if novo_desc_perc < 0 or novo_desc_perc > 100:
+                    messagebox.showerror("Erro", "O desconto deve ser entre 0% e 100%.")
+                    return
+                
                 item['quantidade'] = nova_qtd
-                item['desconto'] = novo_desc
-                item['subtotal'] = (nova_qtd * item['preco_unitario']) * (1 - novo_desc/100)
+                item['desconto'] = novo_desc_perc
+                item['subtotal'] = (nova_qtd * item['preco_unitario']) * (1 - novo_desc_perc/100)
                 
                 self._atualizar_tree()
                 self._atualizar_totais()
@@ -570,10 +607,11 @@ class VendasModule:
                 messagebox.showerror("Erro", "Valores inválidos para quantidade ou desconto.")
         
         tk.Button(dlg, text="Salvar Alterações", command=salvar, bg="#2ecc71", fg="white", 
-                  font=("Segoe UI", 10, "bold"), pady=5).pack(pady=15)
+                  font=("Segoe UI", 10, "bold"), pady=8).pack(pady=10)
         
-        ent_qtd.bind("<Return>", lambda e: ent_desc.focus())
-        ent_desc.bind("<Return>", lambda e: salvar())
+        ent_qtd.bind("<Return>", lambda e: ent_perc.focus())
+        ent_perc.bind("<Return>", lambda e: ent_real.focus())
+        ent_real.bind("<Return>", lambda e: salvar())
 
     def _limpar_carrinho(self):
         if messagebox.askyesno("Limpar", "Deseja limpar todo o carrinho?"):
