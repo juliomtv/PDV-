@@ -172,9 +172,8 @@ class VendasModule:
         frame_pag.pack(fill="x", pady=(0, 8))
 
         self.var_forma = tk.StringVar(value="dinheiro")
-        formas = [("💵 Dinheiro (F1)", "dinheiro"), ("💳 Cartão Débito (F2)", "debito"),
-                  ("💳 Cartão Crédito (F3)", "credito"), ("📱 PIX (F4)", "pix"),
-                  ("🎫 Vale (F5)", "vale")]
+        formas = [("💵 Dinheiro (F9)", "dinheiro"), ("💳 Cartão Débito (F10)", "debito"),
+                  ("💳 Cartão Crédito (F11)", "credito"), ("📱 PIX (F12)", "pix")]
         self.radio_buttons = {}
         for txt, val in formas:
             rb = tk.Radiobutton(frame_pag, text=txt, variable=self.var_forma,
@@ -224,50 +223,26 @@ class VendasModule:
 
     def _bind_shortcuts(self):
         """Configura os atalhos de teclado solicitados."""
-        # Atalhos globais (F1-F5 para pagamento quando não estiver no campo de busca)
         root = self.parent.winfo_toplevel()
-        root.bind("<F1>", lambda e: self._set_forma_pagamento("dinheiro"))
-        root.bind("<F2>", lambda e: self._on_f2_pressed())
-        root.bind("<F3>", lambda e: self._set_forma_pagamento("credito"))
-        root.bind("<F4>", lambda e: self._on_f4_pressed())
-        root.bind("<F5>", lambda e: self._on_f5_pressed())
         
+        # Atalhos de Pagamento (F9-F12)
+        root.bind("<F9>", lambda e: self._set_forma_pagamento("dinheiro"))
+        root.bind("<F10>", lambda e: self._set_forma_pagamento("debito"))
+        root.bind("<F11>", lambda e: self._set_forma_pagamento("credito"))
+        root.bind("<F12>", lambda e: self._set_forma_pagamento("pix"))
+        
+        # Outros Atalhos
+        root.bind("<F2>", lambda e: self.entry_busca.focus_set())
+        root.bind("<F4>", lambda e: self.spin_qtd.focus_set())
+        root.bind("<F5>", lambda e: self._alterar_valor_atalho())
         root.bind("<F6>", lambda e: self._remover_item())
         root.bind("<F7>", lambda e: self._buscar_produto())
         root.bind("<F8>", lambda e: self._finalizar_venda())
-        root.bind("<F10>", lambda e: self.entry_desconto.focus_set())
+        
+        # Atalhos de Controle
+        root.bind("<Control-D>", lambda e: self.entry_desconto.focus_set())
         root.bind("<Control-F11>", lambda e: self._consultar_vendas_atalho())
         root.bind("<Control-Shift-KeyPress>", self._desagrupar_atalho)
-
-    def _on_f2_pressed(self):
-        # Se o foco estiver na busca, F2 foca na busca (comportamento original)
-        # Se não estiver, F2 troca para Cartão Débito
-        foco_atual = self.parent.focus_get()
-        if foco_atual == self.entry_busca:
-            # Já está na busca, não faz nada ou foca novamente
-            self.entry_busca.focus_set()
-        else:
-            self._set_forma_pagamento("debito")
-
-
-
-    def _on_f4_pressed(self):
-        # Se o foco estiver na busca, F4 foca na Quantidade
-        # Se não estiver, F4 troca para PIX
-        foco_atual = self.parent.focus_get()
-        if foco_atual == self.entry_busca:
-            self.spin_qtd.focus_set()
-        else:
-            self._set_forma_pagamento("pix")
-
-    def _on_f5_pressed(self):
-        # Se o foco estiver na busca, F5 Alterar Valor (atalho original)
-        # Se não estiver, F5 troca para Vale
-        foco_atual = self.parent.focus_get()
-        if foco_atual == self.entry_busca:
-            self._alterar_valor_atalho()
-        else:
-            self._set_forma_pagamento("vale")
 
     def _set_forma_pagamento(self, forma):
         self.var_forma.set(forma)
