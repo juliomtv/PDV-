@@ -226,23 +226,39 @@ class VendasModule:
         root = self.parent.winfo_toplevel()
         
         # Atalhos de Pagamento (F9-F12)
-        root.bind("<F9>", lambda e: self._set_forma_pagamento("dinheiro"))
-        root.bind("<F10>", lambda e: self._set_forma_pagamento("debito"))
-        root.bind("<F11>", lambda e: self._set_forma_pagamento("credito"))
-        root.bind("<F12>", lambda e: self._set_forma_pagamento("pix"))
+        root.bind("<F9>", self._on_f9)
+        root.bind("<F10>", self._on_f10)
+        root.bind("<F11>", self._on_f11)
+        root.bind("<F12>", self._on_f12)
         
         # Outros Atalhos
-        root.bind("<F2>", lambda e: self.entry_busca.focus_set())
-        root.bind("<F4>", lambda e: self.spin_qtd.focus_set())
-        root.bind("<F5>", lambda e: self._alterar_valor_atalho())
-        root.bind("<F6>", lambda e: self._remover_item())
-        root.bind("<F7>", lambda e: self._buscar_produto())
-        root.bind("<F8>", lambda e: self._finalizar_venda())
+        root.bind("<F2>", lambda e: (self.entry_busca.focus_set(), "break")[1])
+        root.bind("<F4>", lambda e: (self.spin_qtd.focus_set(), "break")[1])
+        root.bind("<F5>", lambda e: (self._alterar_valor_atalho(), "break")[1])
+        root.bind("<F6>", lambda e: (self._remover_item(), "break")[1])
+        root.bind("<F7>", lambda e: (self._buscar_produto(), "break")[1])
+        root.bind("<F8>", lambda e: (self._finalizar_venda(), "break")[1])
         
         # Atalhos de Controle
-        root.bind("<Control-D>", lambda e: self.entry_desconto.focus_set())
-        root.bind("<Control-F11>", lambda e: self._consultar_vendas_atalho())
-        root.bind("<Control-Shift-KeyPress>", self._desagrupar_atalho)
+        root.bind("<Control-D>", lambda e: (self.entry_desconto.focus_set(), "break")[1])
+        root.bind("<Control-F11>", lambda e: (self._consultar_vendas_atalho(), "break")[1])
+        root.bind("<Control-Shift-KeyPress>", lambda e: (self._desagrupar_atalho(e), "break")[1])
+
+    def _on_f9(self, event=None):
+        self._set_forma_pagamento("dinheiro")
+        return "break"
+
+    def _on_f10(self, event=None):
+        self._set_forma_pagamento("debito")
+        return "break"
+
+    def _on_f11(self, event=None):
+        self._set_forma_pagamento("credito")
+        return "break"
+
+    def _on_f12(self, event=None):
+        self._set_forma_pagamento("pix")
+        return "break"
 
     def _set_forma_pagamento(self, forma):
         self.var_forma.set(forma)
