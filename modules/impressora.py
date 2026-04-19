@@ -67,7 +67,7 @@ class ImpressoraManager:
             if len(nome) > w - 12:
                 nome = nome[:w - 15] + "..."
             linhas.append(self._col(nome, f"R$ {item['subtotal']:.2f}"))
-            linhas.append(f"  {item['quantidade']:.3f} x R$ {item['preco_unitario']:.2f}", )
+            linhas.append(f"  {int(item['quantidade'])} x R$ {item['preco_unitario']:.2f}", )
             if item.get("desconto", 0) > 0:
                 linhas.append(f"  Desconto: {item['desconto']:.1f}%")
 

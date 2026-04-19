@@ -238,7 +238,7 @@ class RelatoriosModule:
         tree.pack(fill="both", expand=True, padx=10)
         for it in itens:
             tree.insert("", "end", values=(
-                it["produto_nome"], f"{it['quantidade']:.3f}",
+                it["produto_nome"], f"{int(it['quantidade'])}",
                 f"R$ {it['preco_unitario']:.2f}", f"{it['desconto_item']:.1f}%",
                 f"R$ {it['subtotal']:.2f}"
             ))
@@ -348,7 +348,7 @@ class RelatoriosModule:
         for i, p in enumerate(self.db.relatorio_produtos_mais_vendidos(d_ini, d_fim), 1):
             self.tree_mv.insert("", "end", values=(
                 f"#{i}", p["nome"], p["codigo_barras"] or "—",
-                f"{p['total_qtd']:.3f}", f"R$ {p['total_valor']:.2f}"
+                f"{int(p['total_qtd'])}", f"R$ {p['total_valor']:.2f}"
             ))
 
     def _build_historico(self, parent):

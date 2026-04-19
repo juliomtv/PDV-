@@ -55,12 +55,12 @@ class VendasModule:
         tk.Label(busca_inner, text="Qtd (F4):", bg="#16213e", fg="#e0e0e0",
                  font=("Segoe UI", 10)).pack(side="left", padx=(10, 4))
 
-        self.spin_qtd = tk.Spinbox(busca_inner, from_=0.001, to=9999, increment=1,
-                                    format="%.3f", width=7,
+        self.spin_qtd = tk.Spinbox(busca_inner, from_=1, to=9999, increment=1,
+                                    width=7,
                                     bg="#0f3460", fg="white", buttonbackground="#0f3460",
                                     font=("Segoe UI", 12))
         self.spin_qtd.delete(0, "end")
-        self.spin_qtd.insert(0, "1.000")
+        self.spin_qtd.insert(0, "1")
         self.spin_qtd.pack(side="left", padx=4)
 
         tk.Button(busca_inner, text="➕ ADICIONAR (F7)", command=self._buscar_produto,
@@ -418,10 +418,10 @@ class VendasModule:
 
     def _adicionar_ao_carrinho(self, produto):
         try:
-            qtd_str = self.spin_qtd.get().replace(",", ".")
-            qtd = float(qtd_str)
+            qtd_str = self.spin_qtd.get().split(".")[0].split(",")[0]
+            qtd = int(qtd_str)
         except ValueError:
-            qtd = 1.0
+            qtd = 1
 
         # Verifica se já existe no carrinho para agrupar
         for item in self.carrinho:
@@ -432,7 +432,7 @@ class VendasModule:
                 self._atualizar_totais()
                 self.entry_busca.delete(0, "end")
                 self.spin_qtd.delete(0, "end")
-                self.spin_qtd.insert(0, "1.000")
+                self.spin_qtd.insert(0, "1")
                 return
 
         item = {
@@ -449,14 +449,14 @@ class VendasModule:
         self._atualizar_totais()
         self.entry_busca.delete(0, "end")
         self.spin_qtd.delete(0, "end")
-        self.spin_qtd.insert(0, "1.000")
+        self.spin_qtd.insert(0, "1")
 
     def _atualizar_tree(self):
         for i in self.tree_carrinho.get_children():
             self.tree_carrinho.delete(i)
         for it in self.carrinho:
             self.tree_carrinho.insert("", "end", values=(
-                it["codigo_barras"] or "—", it["nome"], f"{it['quantidade']:.3f}",
+                it["codigo_barras"] or "—", it["nome"], f"{int(it['quantidade'])}",
                 self._formatar_real(it["preco_unitario"]), f"{it['desconto']:.1f}%",
                 self._formatar_real(it["subtotal"])
             ))
