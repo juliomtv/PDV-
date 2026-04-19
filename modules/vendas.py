@@ -63,7 +63,7 @@ class VendasModule:
         self.spin_qtd.insert(0, "1.000")
         self.spin_qtd.pack(side="left", padx=4)
 
-        tk.Button(busca_inner, text="➕ ADICIONAR (F3)", command=self._buscar_produto,
+        tk.Button(busca_inner, text="➕ ADICIONAR (F7)", command=self._buscar_produto,
                   bg="#e94560", fg="white", font=("Segoe UI", 10, "bold"),
                   bd=0, relief="flat", padx=12, pady=6, cursor="hand2").pack(side="left", padx=6)
 
@@ -228,11 +228,12 @@ class VendasModule:
         root = self.parent.winfo_toplevel()
         root.bind("<F1>", lambda e: self._set_forma_pagamento("dinheiro"))
         root.bind("<F2>", lambda e: self._on_f2_pressed())
-        root.bind("<F3>", lambda e: self._on_f3_pressed())
+        root.bind("<F3>", lambda e: self._set_forma_pagamento("credito"))
         root.bind("<F4>", lambda e: self._on_f4_pressed())
         root.bind("<F5>", lambda e: self._on_f5_pressed())
         
         root.bind("<F6>", lambda e: self._remover_item())
+        root.bind("<F7>", lambda e: self._buscar_produto())
         root.bind("<F8>", lambda e: self._finalizar_venda())
         root.bind("<F10>", lambda e: self.entry_desconto.focus_set())
         root.bind("<Control-F11>", lambda e: self._consultar_vendas_atalho())
@@ -248,14 +249,7 @@ class VendasModule:
         else:
             self._set_forma_pagamento("debito")
 
-    def _on_f3_pressed(self):
-        # Se o foco estiver na busca, F3 Adiciona Produto
-        # Se não estiver, F3 troca para Cartão Crédito
-        foco_atual = self.parent.focus_get()
-        if foco_atual == self.entry_busca:
-            self._buscar_produto()
-        else:
-            self._set_forma_pagamento("credito")
+
 
     def _on_f4_pressed(self):
         # Se o foco estiver na busca, F4 foca na Quantidade
