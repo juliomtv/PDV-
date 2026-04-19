@@ -88,6 +88,7 @@ class VendasModule:
         self.tree_carrinho.configure(yscrollcommand=sb.set)
         self.tree_carrinho.pack(side="left", fill="both", expand=True)
         sb.pack(side="right", fill="y")
+        self.tree_carrinho.bind("<Double-1>", lambda e: self._editar_item())
 
         # Botões do carrinho
         frame_btns = tk.Frame(left, bg="#1a1a2e")
@@ -196,11 +197,11 @@ class VendasModule:
         self.entry_pago.pack(side="right", ipady=5)
         self.entry_pago.bind("<KeyRelease>", self._on_pago_key)
 
-        f_troco = tk.Frame(frame_pag, bg="#16213e")
-        f_troco.pack(fill="x", padx=15, pady=(0, 10))
-        tk.Label(f_troco, text="Troco:", bg="#16213e", fg="#a0a0c0",
+        frame_troco = tk.Frame(frame_pag, bg="#16213e")
+        frame_troco.pack(fill="x", padx=15, pady=(0, 10))
+        tk.Label(frame_troco, text="Troco:", bg="#16213e", fg="#a0a0c0",
                  font=("Segoe UI", 9)).pack(side="left")
-        self.lbl_troco = tk.Label(f_troco, text="R$ 0,00", bg="#16213e",
+        self.lbl_troco = tk.Label(frame_troco, text="R$ 0,00", bg="#16213e",
                                    fg="#2ecc71", font=("Segoe UI", 13, "bold"))
         self.lbl_troco.pack(side="right")
 
@@ -302,29 +303,20 @@ class VendasModule:
 
     def _parse_real(self, texto):
         """Converte string R$ 0,00 para float."""
+        if not texto: return 0.0
         try:
-            limpo = texto.replace("R$", "").replace(".", "").replace(",", ".").strip()
-            return float(limpo)
+            res = texto.replace("R$", "").replace(".", "").replace(",", ".").strip()
+            return float(res)
         except ValueError:
             return 0.0
 
     def _on_pago_key(self, event):
-        """Máscara de moeda para o campo de valor pago."""
-        if event.keysym in ("Tab", "Return", "Escape", "BackSpace", "Delete") or event.keysym.startswith("F"):
-            if event.keysym in ("BackSpace", "Delete"):
-                pass # deixa processar
-            else:
-                return
-        
-        # Pega apenas números
-        digits = "".join([c for c in self.entry_pago.get() if c.isdigit()])
-        if not digits:
-            digits = "0"
-        
-        val = int(digits) / 100
-        self.entry_pago.delete(0, "end")
-        formatted = f"{val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        self.entry_pago.insert(0, formatted)
+        # Auto-formatação enquanto digita
+        v = self.entry_pago.get().replace(",", "").replace(".", "").replace("R$", "").strip()
+        if v.isdigit():
+            valor = float(v) / 100
+            self.entry_pago.delete(0, "end")
+            self.entry_pago.insert(0, f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
         self._calcular_troco()
 
     def _alterar_valor_atalho(self):
@@ -360,71 +352,52 @@ class VendasModule:
 
         self._mostrar_lista_busca(produtos)
 
+    def _on_busca_down(self, event):
+        if self.listbox_busca and self.listbox_busca.winfo_exists():
+            self.listbox_busca.focus_set()
+            self.listbox_busca.selection_set(0)
+        return "break"
+
     def _mostrar_lista_busca(self, produtos):
         if not self.frame_lista:
-            self.frame_lista = tk.Frame(self.parent.winfo_toplevel(), bg="#16213e", highlightbackground="#e94560", highlightthickness=1)
-            self.listbox_busca = tk.Listbox(self.frame_lista, bg="#16213e", fg="#ffffff", 
-                                           font=("Segoe UI", 11), bd=0, highlightthickness=0,
-                                           selectbackground="#e94560", selectforeground="white")
-            self.listbox_busca.pack(fill="both", expand=True)
-            self.listbox_busca.bind("<Return>", lambda e: self._selecionar_da_lista())
-            self.listbox_busca.bind("<Double-1>", lambda e: self._selecionar_da_lista())
+            self.frame_lista = tk.Frame(self.parent, bg="white", highlightbackground="#e94560", highlightthickness=1)
+            self.listbox_busca = tk.Listbox(self.frame_lista, font=("Segoe UI", 11), width=50, height=6, bd=0)
+            self.listbox_busca.pack()
+            self.listbox_busca.bind("<Return>", self._selecionar_da_lista)
+            self.listbox_busca.bind("<Double-1>", self._selecionar_da_lista)
             self.listbox_busca.bind("<Escape>", lambda e: self._fechar_lista_busca())
 
         self.listbox_busca.delete(0, "end")
-        self.produtos_lista = produtos
+        self.produtos_sugeridos = produtos
         for p in produtos:
             self.listbox_busca.insert("end", f"{p['nome']} - {self._formatar_real(p['preco_venda'])}")
 
-        # Posiciona o frame abaixo do entry_busca
-        x = self.entry_busca.winfo_rootx()
-        y = self.entry_busca.winfo_rooty() + self.entry_busca.winfo_height()
-        w = self.entry_busca.winfo_width()
-        h = min(200, len(produtos) * 25)
-        
-        self.frame_lista.place(x=x, y=y, width=w, height=h)
+        # Posicionar abaixo da busca
+        x = self.entry_busca.winfo_x() + 20
+        y = self.entry_busca.winfo_y() + self.entry_busca.winfo_height() + 35
+        self.frame_lista.place(x=x, y=y)
         self.frame_lista.lift()
-
-    def _on_busca_down(self, event):
-        if self.frame_lista and self.frame_lista.winfo_viewable():
-            self.listbox_busca.focus_set()
-            self.listbox_busca.selection_set(0)
-
-    def _selecionar_da_lista(self):
-        sel = self.listbox_busca.curselection()
-        if sel:
-            produto = self.produtos_lista[sel[0]]
-            self._adicionar_ao_carrinho(produto)
-            self._fechar_lista_busca()
-            self.entry_busca.focus_set()
 
     def _fechar_lista_busca(self):
         if self.frame_lista:
             self.frame_lista.place_forget()
 
-    def _buscar_produto(self, event=None):
-        # Se a lista estiver aberta e houver seleção, usa ela
-        if self.frame_lista and self.frame_lista.winfo_viewable():
-            sel = self.listbox_busca.curselection()
-            if sel:
-                self._selecionar_da_lista()
-                return
+    def _selecionar_da_lista(self, event=None):
+        sel = self.listbox_busca.curselection()
+        if sel:
+            produto = self.produtos_sugeridos[sel[0]]
+            self._adicionar_ao_carrinho(produto)
+            self._fechar_lista_busca()
+            self.entry_busca.focus()
 
+    def _buscar_produto(self, event=None):
         termo = self.entry_busca.get().strip()
         if not termo:
             return
 
-        # Tenta por código de barras primeiro
-        produto = self.db.buscar_produto_por_codigo(termo)
-        if produto:
-            self._adicionar_ao_carrinho(produto)
-            self._fechar_lista_busca()
-            return
-
-        # Busca por nome
         produtos = self.db.listar_produtos(busca=termo)
         if not produtos:
-            messagebox.showwarning("Produto não encontrado", f"Nenhum produto encontrado com '{termo}'")
+            messagebox.showwarning("Não encontrado", "Produto não localizado.")
             return
 
         if len(produtos) == 1:
@@ -538,7 +511,6 @@ class VendasModule:
             self.lbl_troco.config(text="R$ 0,00")
         else:
             self.entry_pago.config(state="normal")
-            self._calcular_troco()
 
     def _remover_item(self, event=None):
         sel = self.tree_carrinho.selection()
@@ -550,7 +522,58 @@ class VendasModule:
         self._atualizar_totais()
 
     def _editar_item(self):
-        messagebox.showinfo("Editar", "Selecione o item e use os atalhos para alterar quantidade.")
+        sel = self.tree_carrinho.selection()
+        if not sel:
+            messagebox.showinfo("Editar", "Selecione um item no carrinho para editar.")
+            return
+        
+        idx = self.tree_carrinho.index(sel[0])
+        item = self.carrinho[idx]
+        
+        dlg = tk.Toplevel(self.parent)
+        dlg.title(f"Editar Item: {item['nome']}")
+        dlg.geometry("300x250")
+        dlg.transient(self.parent)
+        dlg.grab_set()
+        dlg.resizable(False, False)
+        
+        tk.Label(dlg, text=f"Produto: {item['nome']}", font=("Segoe UI", 10, "bold")).pack(pady=10)
+        
+        tk.Label(dlg, text="Quantidade:").pack()
+        ent_qtd = tk.Entry(dlg, justify="center")
+        ent_qtd.insert(0, str(int(item['quantidade'])))
+        ent_qtd.pack(pady=5)
+        ent_qtd.focus()
+        
+        tk.Label(dlg, text="Desconto (%):").pack()
+        ent_desc = tk.Entry(dlg, justify="center")
+        ent_desc.insert(0, str(item['desconto']))
+        ent_desc.pack(pady=5)
+        
+        def salvar():
+            try:
+                nova_qtd = int(ent_qtd.get())
+                novo_desc = float(ent_desc.get().replace(",", "."))
+                
+                if nova_qtd <= 0:
+                    messagebox.showerror("Erro", "A quantidade deve ser maior que zero.")
+                    return
+                
+                item['quantidade'] = nova_qtd
+                item['desconto'] = novo_desc
+                item['subtotal'] = (nova_qtd * item['preco_unitario']) * (1 - novo_desc/100)
+                
+                self._atualizar_tree()
+                self._atualizar_totais()
+                dlg.destroy()
+            except ValueError:
+                messagebox.showerror("Erro", "Valores inválidos para quantidade ou desconto.")
+        
+        tk.Button(dlg, text="Salvar Alterações", command=salvar, bg="#2ecc71", fg="white", 
+                  font=("Segoe UI", 10, "bold"), pady=5).pack(pady=15)
+        
+        ent_qtd.bind("<Return>", lambda e: ent_desc.focus())
+        ent_desc.bind("<Return>", lambda e: salvar())
 
     def _limpar_carrinho(self):
         if messagebox.askyesno("Limpar", "Deseja limpar todo o carrinho?"):
