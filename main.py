@@ -57,6 +57,7 @@ class PDVApp:
 
         # Variável para módulo ativo
         self.modulo_ativo = None
+        self.sidebar_visivel = True
 
         self._setup_styles()
         self._build_ui()
@@ -73,6 +74,9 @@ class PDVApp:
             x = (self.root.winfo_screenwidth() // 2) - (self.root.winfo_width() // 2)
             y = (self.root.winfo_screenheight() // 2) - (self.root.winfo_height() // 2)
             self.root.geometry(f"+{x}+{y}")
+
+        # Abre o módulo de vendas por padrão ao iniciar
+        self.root.after(100, lambda: self._abrir_modulo("vendas"))
 
     def _setup_styles(self):
         style = ttk.Style()
@@ -134,10 +138,18 @@ class PDVApp:
         header.pack(fill="x", side="top")
         header.pack_propagate(False)
 
+        # Botão para esconder/mostrar menu
+        self.btn_menu = tk.Button(header, text="☰", font=("Segoe UI", 14, "bold"),
+                                  bg=self.cores["header"], fg=self.cores["texto"],
+                                  bd=0, relief="flat", padx=15, cursor="hand2",
+                                  activebackground=self.cores["sidebar"],
+                                  command=self._toggle_sidebar)
+        self.btn_menu.pack(side="left", fill="y")
+
         self.lbl_titulo = tk.Label(header, text=f"🛒 {self.nome_empresa}",
                                    font=("Segoe UI", 18, "bold"),
                                    bg=self.cores["header"], fg=self.cores["acentuado"])
-        self.lbl_titulo.pack(side="left", padx=20, pady=10)
+        self.lbl_titulo.pack(side="left", padx=10, pady=10)
 
         import datetime
         data_str = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
@@ -148,11 +160,11 @@ class PDVApp:
         self._atualizar_hora()
 
         # Sidebar de navegação
-        sidebar = tk.Frame(self.root, bg=self.cores["sidebar"], width=200)
-        sidebar.pack(fill="y", side="left")
-        sidebar.pack_propagate(False)
+        self.sidebar = tk.Frame(self.root, bg=self.cores["sidebar"], width=200)
+        self.sidebar.pack(fill="y", side="left")
+        self.sidebar.pack_propagate(False)
 
-        tk.Label(sidebar, text="MENU",
+        tk.Label(self.sidebar, text="MENU",
                  font=("Segoe UI", 9, "bold"),
                  bg=self.cores["sidebar"], fg="#606080").pack(pady=(20, 10), padx=15, anchor="w")
 
@@ -167,7 +179,7 @@ class PDVApp:
         ]
 
         for texto, modulo in menus:
-            btn = tk.Button(sidebar, text=texto,
+            btn = tk.Button(self.sidebar, text=texto,
                             font=("Segoe UI", 11),
                             bg=self.cores["sidebar"], fg="#c0c0d0",
                             activebackground=self.cores["header"], activeforeground=self.cores["acentuado"],
@@ -177,7 +189,7 @@ class PDVApp:
             btn.pack(fill="x")
             self.nav_buttons[modulo] = btn
 
-        tk.Label(sidebar, text="v1.0.0",
+        tk.Label(self.sidebar, text="v1.1.0",
                  font=("Segoe UI", 8),
                  bg=self.cores["sidebar"], fg="#404060").pack(side="bottom", pady=10)
 
@@ -187,6 +199,15 @@ class PDVApp:
 
         # Logo no fundo
         self._setup_background_logo()
+
+    def _toggle_sidebar(self):
+        """Esconde ou mostra a barra lateral."""
+        if self.sidebar_visivel:
+            self.sidebar.pack_forget()
+            self.sidebar_visivel = False
+        else:
+            self.sidebar.pack(fill="y", side="left", before=self.content_frame)
+            self.sidebar_visivel = True
 
     def _setup_background_logo(self):
         """Configura a logo no fundo da área de conteúdo."""

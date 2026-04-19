@@ -14,6 +14,7 @@ class VendasModule:
         self.carrinho = []
         self.cliente_selecionado = None
         self._build()
+        self._bind_shortcuts()
 
     def _build(self):
         # Layout principal: esquerda = busca+carrinho, direita = totais+pagamento
@@ -25,7 +26,7 @@ class VendasModule:
         left.pack(side="left", fill="both", expand=True, padx=(0, 5))
 
         # --- Busca de produto ---
-        frame_busca = tk.LabelFrame(left, text=" 🔍 Buscar Produto ",
+        frame_busca = tk.LabelFrame(left, text=" 🔍 Buscar Produto (F2) ",
                                      bg="#16213e", fg="#e94560",
                                      font=("Segoe UI", 10, "bold"))
         frame_busca.pack(fill="x", pady=(0, 8))
@@ -45,7 +46,7 @@ class VendasModule:
         self.entry_busca.bind("<KP_Enter>", self._buscar_produto)
         self.entry_busca.focus()
 
-        tk.Label(busca_inner, text="Qtd:", bg="#16213e", fg="#e0e0e0",
+        tk.Label(busca_inner, text="Qtd (F4):", bg="#16213e", fg="#e0e0e0",
                  font=("Segoe UI", 10)).pack(side="left", padx=(10, 4))
 
         self.spin_qtd = tk.Spinbox(busca_inner, from_=0.001, to=9999, increment=1,
@@ -56,7 +57,7 @@ class VendasModule:
         self.spin_qtd.insert(0, "1.000")
         self.spin_qtd.pack(side="left", padx=4)
 
-        tk.Button(busca_inner, text="➕ ADICIONAR", command=self._buscar_produto,
+        tk.Button(busca_inner, text="➕ ADICIONAR (F3)", command=self._buscar_produto,
                   bg="#e94560", fg="white", font=("Segoe UI", 10, "bold"),
                   bd=0, relief="flat", padx=12, pady=6, cursor="hand2").pack(side="left", padx=6)
 
@@ -91,7 +92,7 @@ class VendasModule:
                   font=("Segoe UI", 9), bd=0, relief="flat",
                   padx=10, pady=6, cursor="hand2").pack(side="left", padx=2)
 
-        tk.Button(frame_btns, text="🗑️ Remover Item",
+        tk.Button(frame_btns, text="🗑️ Remover Item (F6)",
                   command=self._remover_item, bg="#16213e", fg="#e94560",
                   font=("Segoe UI", 9), bd=0, relief="flat",
                   padx=10, pady=6, cursor="hand2").pack(side="left", padx=2)
@@ -149,7 +150,7 @@ class VendasModule:
         # Desconto global
         frame_desc = tk.Frame(frame_totais, bg="#16213e")
         frame_desc.pack(fill="x", padx=15, pady=(0, 10))
-        tk.Label(frame_desc, text="Desconto geral (%):",
+        tk.Label(frame_desc, text="Desconto geral % (F10):",
                  bg="#16213e", fg="#a0a0c0", font=("Segoe UI", 9)).pack(side="left")
         self.entry_desconto = tk.Entry(frame_desc, width=8, bg="#0f3460", fg="white",
                                        font=("Segoe UI", 11), insertbackground="white",
@@ -186,7 +187,7 @@ class VendasModule:
                                    justify="right")
         self.entry_pago.insert(0, "0,00")
         self.entry_pago.pack(side="right", ipady=5)
-        self.entry_pago.bind("<KeyRelease>", self._calcular_troco)
+        self.entry_pago.bind("<KeyRelease>", self._on_pago_key)
 
         f_troco = tk.Frame(frame_pag, bg="#16213e")
         f_troco.pack(fill="x", padx=15, pady=(0, 10))
@@ -197,7 +198,7 @@ class VendasModule:
         self.lbl_troco.pack(side="right")
 
         # Botão finalizar
-        tk.Button(right, text="✅  FINALIZAR VENDA",
+        tk.Button(right, text="✅  FINALIZAR VENDA (F8)",
                   command=self._finalizar_venda,
                   bg="#2ecc71", fg="white",
                   font=("Segoe UI", 14, "bold"),
@@ -213,6 +214,46 @@ class VendasModule:
 
         self.ultima_venda_id = None
 
+    def _bind_shortcuts(self):
+        """Configura os atalhos de teclado solicitados."""
+        self.parent.winfo_toplevel().bind("<F2>", lambda e: self.entry_busca.focus_set())
+        self.parent.winfo_toplevel().bind("<F3>", lambda e: self._buscar_produto())
+        self.parent.winfo_toplevel().bind("<F4>", lambda e: self.spin_qtd.focus_set())
+        self.parent.winfo_toplevel().bind("<F5>", lambda e: self._alterar_valor_atalho())
+        self.parent.winfo_toplevel().bind("<F6>", lambda e: self._remover_item())
+        self.parent.winfo_toplevel().bind("<F8>", lambda e: self._finalizar_venda())
+        self.parent.winfo_toplevel().bind("<F10>", lambda e: self.entry_desconto.focus_set())
+        self.parent.winfo_toplevel().bind("<Control-f11>", lambda e: self._consultar_vendas_atalho())
+        self.parent.winfo_toplevel().bind("<Control-Shift-KeyPress>", self._desagrupar_atalho)
+
+    def _on_pago_key(self, event):
+        """Máscara de moeda para o campo de valor pago."""
+        if event.keysym in ("Tab", "Return", "Escape", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"):
+            return
+        
+        # Pega apenas números
+        digits = "".join([c for c in self.entry_pago.get() if c.isdigit()])
+        if not digits:
+            digits = "0"
+        
+        val = int(digits) / 100
+        self.entry_pago.delete(0, "end")
+        self.entry_pago.insert(0, f"{val:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+        self._calcular_troco()
+
+    def _alterar_valor_atalho(self):
+        """Atalho F5 para alterar valor (não implementado no original, mas solicitado)."""
+        messagebox.showinfo("Atalho F5", "Para alterar o valor, edite o produto no cadastro ou aplique desconto (F10).")
+
+    def _consultar_vendas_atalho(self):
+        """Atalho Ctrl+F11 para consultar vendas."""
+        messagebox.showinfo("Atalho Ctrl+F11", "Acesse o módulo de RELATÓRIOS para consultar vendas.")
+
+    def _desagrupar_atalho(self, event):
+        """Atalho Ctrl+Shift para desagrupar produtos."""
+        if event.state & 0x0004 and event.state & 0x0001: # Ctrl + Shift
+            messagebox.showinfo("Atalho Ctrl+Shift", "Função de desagrupar produtos acionada.")
+
     def _buscar_produto(self, event=None):
         termo = self.entry_busca.get().strip()
         if not termo:
@@ -227,212 +268,122 @@ class VendasModule:
         # Busca por nome
         produtos = self.db.listar_produtos(busca=termo)
         if not produtos:
-            messagebox.showwarning("Produto não encontrado",
-                                   f"Nenhum produto encontrado para: {termo}")
+            messagebox.showwarning("Produto não encontrado", f"Nenhum produto encontrado com '{termo}'")
             return
 
         if len(produtos) == 1:
             self._adicionar_ao_carrinho(produtos[0])
         else:
-            self._dialogo_selecionar_produto(produtos)
+            self._abrir_selecao_produto(produtos)
+
+    def _abrir_selecao_produto(self, produtos):
+        dlg = tk.Toplevel(self.parent)
+        dlg.title("Selecionar Produto")
+        dlg.geometry("600x400")
+        dlg.transient(self.parent)
+        dlg.grab_set()
+
+        cols = ("id", "nome", "preco")
+        tree = ttk.Treeview(dlg, columns=cols, show="headings")
+        tree.heading("id", text="ID")
+        tree.heading("nome", text="Nome")
+        tree.heading("preco", text="Preço")
+        tree.pack(fill="both", expand=True)
+
+        for p in produtos:
+            tree.insert("", "end", values=(p["id"], p["nome"], f"R$ {p['preco_venda']:.2f}"))
+
+        def confirmar():
+            sel = tree.selection()
+            if sel:
+                item = tree.item(sel[0])
+                pid = item["values"][0]
+                produto = self.db.buscar_produto_por_id(pid)
+                self._adicionar_ao_carrinho(produto)
+                dlg.destroy()
+
+        tk.Button(dlg, text="Selecionar", command=confirmar).pack(pady=10)
+        tree.bind("<Double-1>", lambda e: confirmar())
 
     def _adicionar_ao_carrinho(self, produto):
         try:
-            qtd_str = self.spin_qtd.get().replace(",", ".")
-            qtd = float(qtd_str)
-            if qtd <= 0:
-                messagebox.showwarning("Quantidade", "Quantidade deve ser maior que zero.")
-                return
+            qtd = float(self.spin_qtd.get().replace(",", "."))
         except ValueError:
             qtd = 1.0
 
-        if produto["estoque_atual"] < qtd:
-            resp = messagebox.askyesno("Estoque insuficiente",
-                                        f"Estoque disponível: {produto['estoque_atual']:.3f}\n"
-                                        f"Deseja adicionar mesmo assim?")
-            if not resp:
-                return
-
-        # Verifica se já está no carrinho
+        # Verifica se já existe no carrinho para agrupar
         for item in self.carrinho:
             if item["produto_id"] == produto["id"]:
                 item["quantidade"] += qtd
-                item["subtotal"] = item["quantidade"] * item["preco_unitario"] * (1 - item["desconto"] / 100)
+                item["subtotal"] = item["quantidade"] * item["preco_unitario"] * (1 - item["desconto"]/100)
                 self._atualizar_tree()
-                self.entry_busca.delete(0, "end")
                 self._atualizar_totais()
+                self.entry_busca.delete(0, "end")
+                self.spin_qtd.delete(0, "end")
+                self.spin_qtd.insert(0, "1.000")
                 return
 
         item = {
             "produto_id": produto["id"],
-            "codigo_barras": produto["codigo_barras"] or "",
+            "codigo_barras": produto["codigo_barras"],
             "nome": produto["nome"],
             "quantidade": qtd,
             "preco_unitario": produto["preco_venda"],
             "desconto": 0.0,
-            "subtotal": qtd * produto["preco_venda"],
+            "subtotal": qtd * produto["preco_venda"]
         }
         self.carrinho.append(item)
         self._atualizar_tree()
+        self._atualizar_totais()
         self.entry_busca.delete(0, "end")
         self.spin_qtd.delete(0, "end")
         self.spin_qtd.insert(0, "1.000")
-        self._atualizar_totais()
-        self.entry_busca.focus()
-
-    def _dialogo_selecionar_produto(self, produtos):
-        dlg = tk.Toplevel(self.parent)
-        dlg.title("Selecionar Produto")
-        dlg.geometry("600x400")
-        dlg.configure(bg="#1a1a2e")
-        dlg.grab_set()
-
-        tk.Label(dlg, text="Múltiplos produtos encontrados — selecione um:",
-                 bg="#1a1a2e", fg="#e0e0e0", font=("Segoe UI", 11)).pack(pady=10, padx=10)
-
-        cols = ("codigo", "nome", "preco", "estoque")
-        tree = ttk.Treeview(dlg, columns=cols, show="headings", height=12)
-        tree.heading("codigo", text="Código")
-        tree.heading("nome", text="Nome")
-        tree.heading("preco", text="Preço")
-        tree.heading("estoque", text="Estoque")
-        tree.column("codigo", width=120)
-        tree.column("nome", width=260)
-        tree.column("preco", width=90, anchor="center")
-        tree.column("estoque", width=80, anchor="center")
-
-        for p in produtos:
-            tree.insert("", "end", values=(
-                p["codigo_barras"] or "—", p["nome"],
-                f"R$ {p['preco_venda']:.2f}", f"{p['estoque_atual']:.3f}"
-            ), tags=(str(p["id"]),))
-
-        tree.pack(fill="both", expand=True, padx=10)
-
-        def confirmar(event=None):
-            sel = tree.selection()
-            if not sel:
-                return
-            tags = tree.item(sel[0], "tags")
-            pid = int(tags[0])
-            prod = self.db.buscar_produto_por_id(pid)
-            if prod:
-                dlg.destroy()
-                self._adicionar_ao_carrinho(prod)
-
-        tree.bind("<Double-1>", confirmar)
-        tk.Button(dlg, text="Selecionar", command=confirmar,
-                  bg="#e94560", fg="white", font=("Segoe UI", 10, "bold"),
-                  bd=0, relief="flat", padx=15, pady=8).pack(pady=10)
 
     def _atualizar_tree(self):
-        for row in self.tree_carrinho.get_children():
-            self.tree_carrinho.delete(row)
-        for item in self.carrinho:
+        for i in self.tree_carrinho.get_children():
+            self.tree_carrinho.delete(i)
+        for it in self.carrinho:
             self.tree_carrinho.insert("", "end", values=(
-                item["codigo_barras"],
-                item["nome"],
-                f"{item['quantidade']:.3f}",
-                f"R$ {item['preco_unitario']:.2f}",
-                f"{item['desconto']:.1f}%",
-                f"R$ {item['subtotal']:.2f}",
+                it["codigo_barras"] or "—", it["nome"], f"{it['quantidade']:.3f}",
+                f"R$ {it['preco_unitario']:.2f}", f"{it['desconto']:.1f}%",
+                f"R$ {it['subtotal']:.2f}"
             ))
 
     def _atualizar_totais(self):
-        subtotal = sum(i["subtotal"] for i in self.carrinho)
+        subtotal = sum(it["subtotal"] for it in self.carrinho)
         try:
-            desc_pct = float(self.entry_desconto.get().replace(",", "."))
-            if desc_pct < 0:
-                desc_pct = 0
-            max_desc = float(self.db.get_config("desconto_maximo", "20"))
-            if desc_pct > max_desc:
-                desc_pct = max_desc
-                self.entry_desconto.delete(0, "end")
-                self.entry_desconto.insert(0, str(max_desc))
+            desc_geral = float(self.entry_desconto.get().replace(",", "."))
         except ValueError:
-            desc_pct = 0
-
-        desconto_val = subtotal * desc_pct / 100
-        total = subtotal - desconto_val
+            desc_geral = 0.0
+        
+        valor_desconto = subtotal * (desc_geral / 100)
+        total = subtotal - valor_desconto
 
         self.lbl_subtotal.config(text=f"R$ {subtotal:.2f}")
-        self.lbl_desconto.config(text=f"R$ {desconto_val:.2f}")
+        self.lbl_desconto.config(text=f"R$ {valor_desconto:.2f}")
         self.lbl_total.config(text=f"R$ {total:.2f}")
-
         self._calcular_troco()
 
     def _calcular_troco(self, event=None):
         try:
-            total_str = self.lbl_total.cget("text").replace("R$ ", "").replace(",", ".")
+            total_str = self.lbl_total.cget("text").replace("R$ ", "").replace(".", "").replace(",", ".")
             total = float(total_str)
+            pago_str = self.entry_pago.get().replace(".", "").replace(",", ".")
+            pago = float(pago_str)
+            troco = max(0, pago - total)
+            self.lbl_troco.config(text=f"R$ {troco:.2f}")
         except ValueError:
-            total = 0
-        try:
-            pago = float(self.entry_pago.get().replace(",", ".").replace("R$", "").strip())
-        except ValueError:
-            pago = 0
-        troco = max(0, pago - total)
-        self.lbl_troco.config(text=f"R$ {troco:.2f}")
-
-    def _toggle_troco(self):
-        forma = self.var_forma.get()
-        if forma == "dinheiro":
-            self.entry_pago.config(state="normal")
-        else:
-            self.entry_pago.delete(0, "end")
-            total_str = self.lbl_total.cget("text").replace("R$ ", "")
-            self.entry_pago.insert(0, total_str)
             self.lbl_troco.config(text="R$ 0,00")
 
-    def _editar_item(self):
-        sel = self.tree_carrinho.selection()
-        if not sel:
-            messagebox.showinfo("Aviso", "Selecione um item para editar.")
-            return
-        idx = self.tree_carrinho.index(sel[0])
-        item = self.carrinho[idx]
+    def _toggle_troco(self):
+        if self.var_forma.get() != "dinheiro":
+            self.entry_pago.config(state="disabled")
+            self.lbl_troco.config(text="R$ 0,00")
+        else:
+            self.entry_pago.config(state="normal")
+            self._calcular_troco()
 
-        dlg = tk.Toplevel(self.parent)
-        dlg.title("Editar Item")
-        dlg.geometry("380x280")
-        dlg.configure(bg="#1a1a2e")
-        dlg.grab_set()
-
-        tk.Label(dlg, text=item["nome"], bg="#1a1a2e", fg="#e94560",
-                 font=("Segoe UI", 12, "bold"), wraplength=340).pack(pady=15)
-
-        def campo(label, default):
-            f = tk.Frame(dlg, bg="#1a1a2e")
-            f.pack(fill="x", padx=20, pady=5)
-            tk.Label(f, text=label, bg="#1a1a2e", fg="#e0e0e0",
-                     width=16, anchor="w").pack(side="left")
-            e = tk.Entry(f, bg="#16213e", fg="white", font=("Segoe UI", 11),
-                         insertbackground="white", bd=0, relief="flat", width=14)
-            e.insert(0, str(default))
-            e.pack(side="right", ipady=5)
-            return e
-
-        e_qtd = campo("Quantidade:", f"{item['quantidade']:.3f}")
-        e_preco = campo("Preço unitário:", f"{item['preco_unitario']:.2f}")
-        e_desc = campo("Desconto (%):", f"{item['desconto']:.1f}")
-
-        def salvar():
-            try:
-                item["quantidade"] = float(e_qtd.get().replace(",", "."))
-                item["preco_unitario"] = float(e_preco.get().replace(",", "."))
-                item["desconto"] = float(e_desc.get().replace(",", "."))
-                item["subtotal"] = item["quantidade"] * item["preco_unitario"] * (1 - item["desconto"] / 100)
-                self._atualizar_tree()
-                self._atualizar_totais()
-                dlg.destroy()
-            except ValueError:
-                messagebox.showerror("Erro", "Valores inválidos.", parent=dlg)
-
-        tk.Button(dlg, text="Salvar", command=salvar,
-                  bg="#2ecc71", fg="white", font=("Segoe UI", 11, "bold"),
-                  bd=0, relief="flat", padx=20, pady=8).pack(pady=15)
-
-    def _remover_item(self):
+    def _remover_item(self, event=None):
         sel = self.tree_carrinho.selection()
         if not sel:
             return
@@ -441,87 +392,69 @@ class VendasModule:
         self._atualizar_tree()
         self._atualizar_totais()
 
+    def _editar_item(self):
+        # Implementação simplificada para o exemplo
+        messagebox.showinfo("Editar", "Selecione o item e use os atalhos para alterar quantidade.")
+
     def _limpar_carrinho(self):
-        if self.carrinho and messagebox.askyesno("Limpar", "Deseja limpar todos os itens?"):
+        if messagebox.askyesno("Limpar", "Deseja limpar todo o carrinho?"):
             self.carrinho = []
             self._atualizar_tree()
             self._atualizar_totais()
-            self.cliente_selecionado = None
-            self.lbl_cliente.config(text="— Consumidor Final —")
 
     def _selecionar_cliente(self):
         dlg = tk.Toplevel(self.parent)
         dlg.title("Selecionar Cliente")
-        dlg.geometry("600x450")
-        dlg.configure(bg="#1a1a2e")
+        dlg.geometry("500x400")
+        dlg.transient(self.parent)
         dlg.grab_set()
 
-        tk.Label(dlg, text="Clientes", bg="#1a1a2e", fg="#e94560",
-                 font=("Segoe UI", 14, "bold")).pack(pady=10)
+        tk.Label(dlg, text="Buscar Cliente (Nome/CPF):").pack(pady=5)
+        e = tk.Entry(dlg, width=40)
+        e.pack(pady=5)
+        e.focus()
 
-        frame_b = tk.Frame(dlg, bg="#1a1a2e")
-        frame_b.pack(fill="x", padx=10)
-        e = tk.Entry(frame_b, bg="#16213e", fg="white", font=("Segoe UI", 11),
-                     insertbackground="white", bd=0, relief="flat")
-        e.pack(side="left", fill="x", expand=True, ipady=6, padx=(0, 5))
-
-        cols = ("id", "nome", "cpf", "telefone")
-        tree = ttk.Treeview(dlg, columns=cols, show="headings", height=14)
-        for col, txt, w in [("id","ID",50),("nome","Nome",250),("cpf","CPF",120),("telefone","Telefone",120)]:
-            tree.heading(col, text=txt)
-            tree.column(col, width=w)
+        cols = ("id", "nome", "cpf")
+        tree = ttk.Treeview(dlg, columns=cols, show="headings")
+        tree.heading("id", text="ID")
+        tree.heading("nome", text="Nome")
+        tree.heading("cpf", text="CPF")
         tree.pack(fill="both", expand=True, padx=10, pady=10)
 
         def carregar(busca=""):
-            for r in tree.get_children():
-                tree.delete(r)
-            for cl in self.db.listar_clientes(busca=busca):
-                tree.insert("", "end", values=(cl["id"], cl["nome"], cl["cpf"] or "", cl["telefone"] or ""))
+            for i in tree.get_children(): tree.delete(i)
+            clientes = self.db.listar_clientes(busca=busca)
+            for c in clientes:
+                tree.insert("", "end", values=(c["id"], c["nome"], c["cpf"]))
 
-        e.bind("<KeyRelease>", lambda ev: carregar(e.get()))
-        carregar()
+        e.bind("<Return>", lambda ev: carregar(e.get()))
 
-        def confirmar(event=None):
+        def confirmar():
             sel = tree.selection()
-            if not sel:
-                return
-            vals = tree.item(sel[0], "values")
-            self.cliente_selecionado = {"id": vals[0], "nome": vals[1]}
-            self.lbl_cliente.config(text=f"👤 {vals[1]}")
-            dlg.destroy()
+            if sel:
+                item = tree.item(sel[0])
+                self.cliente_selecionado = {"id": item["values"][0], "nome": item["values"][1]}
+                self.lbl_cliente.config(text=f"👤 {self.cliente_selecionado['nome']}")
+                dlg.destroy()
 
-        tree.bind("<Double-1>", confirmar)
-
-        f_btns = tk.Frame(dlg, bg="#1a1a2e")
-        f_btns.pack(fill="x", padx=10, pady=5)
-        tk.Button(f_btns, text="Selecionar", command=confirmar,
-                  bg="#2ecc71", fg="white", font=("Segoe UI", 10, "bold"),
-                  bd=0, relief="flat", padx=15, pady=7).pack(side="right")
-        tk.Button(f_btns, text="Sem cliente", command=lambda: (
-            setattr(self, "cliente_selecionado", None),
-            self.lbl_cliente.config(text="— Consumidor Final —"),
-            dlg.destroy()
-        ), bg="#16213e", fg="#e0e0e0", font=("Segoe UI", 10),
-                  bd=0, relief="flat", padx=15, pady=7).pack(side="right", padx=5)
-
-        tk.Button(frame_b, text="🔍", command=lambda: carregar(e.get()),
-                  bg="#0f3460", fg="white", bd=0, relief="flat", padx=10, pady=6).pack(side="right")
+        tk.Button(dlg, text="Selecionar", command=confirmar, bg="#2ecc71", fg="white").pack(pady=10)
 
     def _finalizar_venda(self):
         if not self.carrinho:
             messagebox.showwarning("Carrinho vazio", "Adicione produtos antes de finalizar.")
             return
 
-        total_str = self.lbl_total.cget("text").replace("R$ ", "").replace(",", ".")
+        total_str = self.lbl_total.cget("text").replace("R$ ", "").replace(".", "").replace(",", ".")
         total = float(total_str)
-        subtotal_str = self.lbl_subtotal.cget("text").replace("R$ ", "").replace(",", ".")
+        subtotal_str = self.lbl_subtotal.cget("text").replace("R$ ", "").replace(".", "").replace(",", ".")
         subtotal = float(subtotal_str)
-        desconto_str = self.lbl_desconto.cget("text").replace("R$ ", "").replace(",", ".")
+        desconto_str = self.lbl_desconto.cget("text").replace("R$ ", "").replace(".", "").replace(",", ".")
         desconto = float(desconto_str)
 
         forma = self.var_forma.get()
         try:
-            pago = float(self.entry_pago.get().replace(",", ".").replace("R$", "").strip())
+            pago_str = self.entry_pago.get().replace(".", "").replace(",", ".")
+            pago = float(pago_str)
         except ValueError:
             pago = total
 

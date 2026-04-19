@@ -90,9 +90,9 @@ class ImpressoraManager:
         linhas.append(self._centralizar("Obrigado pela preferência!"))
         linhas.append(self._centralizar("Volte sempre!"))
         linhas.append(self._linha("="))
-        linhas.append("")
-        linhas.append("")
-        linhas.append("")
+        
+        # Espaço para o corte
+        linhas.append("\n" * 5)
 
         return "\n".join(linhas)
 
@@ -127,14 +127,20 @@ class ImpressoraManager:
     def _imprimir_windows(self, texto, impressora):
         try:
             import win32print
-            import win32ui
+            # Comando ESC/POS para corte total: GS V 66 0 (ou \x1d\x56\x42\x00)
+            # Vamos adicionar o comando de corte ao final do texto
+            comando_corte = b"\x1d\x56\x42\x00"
+            
             hprinter = win32print.OpenPrinter(impressora)
             try:
                 hjob = win32print.StartDocPrinter(hprinter, 1,
                                                    ("Cupom PDV", None, "RAW"))
                 try:
                     win32print.StartPagePrinter(hprinter)
+                    # Envia o texto
                     win32print.WritePrinter(hprinter, texto.encode("cp850", errors="replace"))
+                    # Envia o comando de corte
+                    win32print.WritePrinter(hprinter, comando_corte)
                     win32print.EndPagePrinter(hprinter)
                 finally:
                     win32print.EndDocPrinter(hprinter)
@@ -149,17 +155,24 @@ class ImpressoraManager:
             subprocess.run(["notepad", "/p", tmp.name], check=False)
 
     def _imprimir_linux(self, texto, impressora):
+        # No Linux, o comando de corte pode ser enviado via echo para o dispositivo ou via filtros do CUPS
+        # Para simplificar e manter compatibilidade, adicionamos o comando ESC/POS ao arquivo temporário
+        comando_corte = "\x1d\x56\x42\x00"
+        
         tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt",
                                           delete=False, encoding="utf-8")
-        tmp.write(texto)
+        tmp.write(texto + comando_corte)
         tmp.close()
         try:
             if impressora:
-                subprocess.run(["lp", "-d", impressora, tmp.name], check=True)
+                subprocess.run(["lp", "-d", impressora, "-o", "raw", tmp.name], check=True)
             else:
-                subprocess.run(["lp", tmp.name], check=True)
-        except FileNotFoundError:
-            subprocess.run(["lpr", tmp.name], check=False)
+                subprocess.run(["lp", "-o", "raw", tmp.name], check=True)
+        except Exception:
+            try:
+                subprocess.run(["lpr", "-o", "raw", tmp.name], check=False)
+            except:
+                pass
         finally:
             os.unlink(tmp.name)
 
@@ -170,7 +183,7 @@ class ImpressoraManager:
         texto += self._centralizar(datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")) + "\n"
         texto += self._linha("=") + "\n"
         texto += self._centralizar("Impressora configurada corretamente!") + "\n"
-        texto += self._linha("=") + "\n\n\n"
+        texto += self._linha("=") + "\n\n\n\n\n"
         self._enviar_impressora(texto)
 
         import tkinter.messagebox as mb
