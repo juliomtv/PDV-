@@ -235,37 +235,45 @@ class VendasModule:
         root.bind("<F6>", lambda e: self._remover_item())
         root.bind("<F8>", lambda e: self._finalizar_venda())
         root.bind("<F10>", lambda e: self.entry_desconto.focus_set())
-        root.bind("<Control-f11>", lambda e: self._consultar_vendas_atalho())
+        root.bind("<Control-F11>", lambda e: self._consultar_vendas_atalho())
         root.bind("<Control-Shift-KeyPress>", self._desagrupar_atalho)
 
     def _on_f2_pressed(self):
-        # Se o foco estiver na busca, F2 não faz nada (ou mantém o foco)
-        # Se não estiver, F2 foca na busca. Mas o usuário quer F2 para Cartão Débito.
-        # Vamos priorizar a troca de pagamento se o foco não estiver na busca.
-        if self.parent.focus_get() != self.entry_busca:
-            self._set_forma_pagamento("debito")
+        # Se o foco estiver na busca, F2 foca na busca (comportamento original)
+        # Se não estiver, F2 troca para Cartão Débito
+        foco_atual = self.parent.focus_get()
+        if foco_atual == self.entry_busca:
+            # Já está na busca, não faz nada ou foca novamente
+            self.entry_busca.focus_set()
         else:
-            # Se já estiver na busca, F2 pode ser ignorado ou usado para outra coisa.
-            # No código original F2 era para focar na busca.
-            pass
+            self._set_forma_pagamento("debito")
 
     def _on_f3_pressed(self):
-        if self.parent.focus_get() != self.entry_busca:
-            self._set_forma_pagamento("credito")
-        else:
+        # Se o foco estiver na busca, F3 Adiciona Produto
+        # Se não estiver, F3 troca para Cartão Crédito
+        foco_atual = self.parent.focus_get()
+        if foco_atual == self.entry_busca:
             self._buscar_produto()
+        else:
+            self._set_forma_pagamento("credito")
 
     def _on_f4_pressed(self):
-        if self.parent.focus_get() != self.entry_busca:
-            self._set_forma_pagamento("pix")
-        else:
+        # Se o foco estiver na busca, F4 foca na Quantidade
+        # Se não estiver, F4 troca para PIX
+        foco_atual = self.parent.focus_get()
+        if foco_atual == self.entry_busca:
             self.spin_qtd.focus_set()
+        else:
+            self._set_forma_pagamento("pix")
 
     def _on_f5_pressed(self):
-        if self.parent.focus_get() != self.entry_busca:
-            self._set_forma_pagamento("vale")
-        else:
+        # Se o foco estiver na busca, F5 Alterar Valor (atalho original)
+        # Se não estiver, F5 troca para Vale
+        foco_atual = self.parent.focus_get()
+        if foco_atual == self.entry_busca:
             self._alterar_valor_atalho()
+        else:
+            self._set_forma_pagamento("vale")
 
     def _set_forma_pagamento(self, forma):
         self.var_forma.set(forma)
