@@ -44,7 +44,13 @@ class VendasModule:
         self.entry_busca.pack(side="left", padx=8, ipady=6)
         self.entry_busca.bind("<Return>", self._buscar_produto)
         self.entry_busca.bind("<KP_Enter>", self._buscar_produto)
+        self.entry_busca.bind("<KeyRelease>", self._on_busca_key)
+        self.entry_busca.bind("<Down>", self._on_busca_down)
         self.entry_busca.focus()
+
+        # Menu suspenso para autocomplete
+        self.listbox_busca = None
+        self.frame_lista = None
 
         tk.Label(busca_inner, text="Qtd (F4):", bg="#16213e", fg="#e0e0e0",
                  font=("Segoe UI", 10)).pack(side="left", padx=(10, 4))
@@ -166,9 +172,10 @@ class VendasModule:
         frame_pag.pack(fill="x", pady=(0, 8))
 
         self.var_forma = tk.StringVar(value="dinheiro")
-        formas = [("💵 Dinheiro", "dinheiro"), ("💳 Cartão Débito", "debito"),
-                  ("💳 Cartão Crédito", "credito"), ("📱 PIX", "pix"),
-                  ("🎫 Vale", "vale")]
+        formas = [("💵 Dinheiro (F1)", "dinheiro"), ("💳 Cartão Débito (F2)", "debito"),
+                  ("💳 Cartão Crédito (F3)", "credito"), ("📱 PIX (F4)", "pix"),
+                  ("🎫 Vale (F5)", "vale")]
+        self.radio_buttons = {}
         for txt, val in formas:
             rb = tk.Radiobutton(frame_pag, text=txt, variable=self.var_forma,
                                 value=val, bg="#16213e", fg="#e0e0e0",
@@ -176,6 +183,7 @@ class VendasModule:
                                 font=("Segoe UI", 10),
                                 command=self._toggle_troco)
             rb.pack(anchor="w", padx=15, pady=2)
+            self.radio_buttons[val] = rb
 
         frame_pago = tk.Frame(frame_pag, bg="#16213e")
         frame_pago.pack(fill="x", padx=15, pady=5)
@@ -216,15 +224,55 @@ class VendasModule:
 
     def _bind_shortcuts(self):
         """Configura os atalhos de teclado solicitados."""
-        self.parent.winfo_toplevel().bind("<F2>", lambda e: self.entry_busca.focus_set())
-        self.parent.winfo_toplevel().bind("<F3>", lambda e: self._buscar_produto())
-        self.parent.winfo_toplevel().bind("<F4>", lambda e: self.spin_qtd.focus_set())
-        self.parent.winfo_toplevel().bind("<F5>", lambda e: self._alterar_valor_atalho())
-        self.parent.winfo_toplevel().bind("<F6>", lambda e: self._remover_item())
-        self.parent.winfo_toplevel().bind("<F8>", lambda e: self._finalizar_venda())
-        self.parent.winfo_toplevel().bind("<F10>", lambda e: self.entry_desconto.focus_set())
-        self.parent.winfo_toplevel().bind("<Control-f11>", lambda e: self._consultar_vendas_atalho())
-        self.parent.winfo_toplevel().bind("<Control-Shift-KeyPress>", self._desagrupar_atalho)
+        # Atalhos globais (F1-F5 para pagamento quando não estiver no campo de busca)
+        root = self.parent.winfo_toplevel()
+        root.bind("<F1>", lambda e: self._set_forma_pagamento("dinheiro"))
+        root.bind("<F2>", lambda e: self._on_f2_pressed())
+        root.bind("<F3>", lambda e: self._on_f3_pressed())
+        root.bind("<F4>", lambda e: self._on_f4_pressed())
+        root.bind("<F5>", lambda e: self._on_f5_pressed())
+        
+        root.bind("<F6>", lambda e: self._remover_item())
+        root.bind("<F8>", lambda e: self._finalizar_venda())
+        root.bind("<F10>", lambda e: self.entry_desconto.focus_set())
+        root.bind("<Control-f11>", lambda e: self._consultar_vendas_atalho())
+        root.bind("<Control-Shift-KeyPress>", self._desagrupar_atalho)
+
+    def _on_f2_pressed(self):
+        # Se o foco estiver na busca, F2 não faz nada (ou mantém o foco)
+        # Se não estiver, F2 foca na busca. Mas o usuário quer F2 para Cartão Débito.
+        # Vamos priorizar a troca de pagamento se o foco não estiver na busca.
+        if self.parent.focus_get() != self.entry_busca:
+            self._set_forma_pagamento("debito")
+        else:
+            # Se já estiver na busca, F2 pode ser ignorado ou usado para outra coisa.
+            # No código original F2 era para focar na busca.
+            pass
+
+    def _on_f3_pressed(self):
+        if self.parent.focus_get() != self.entry_busca:
+            self._set_forma_pagamento("credito")
+        else:
+            self._buscar_produto()
+
+    def _on_f4_pressed(self):
+        if self.parent.focus_get() != self.entry_busca:
+            self._set_forma_pagamento("pix")
+        else:
+            self.spin_qtd.focus_set()
+
+    def _on_f5_pressed(self):
+        if self.parent.focus_get() != self.entry_busca:
+            self._set_forma_pagamento("vale")
+        else:
+            self._alterar_valor_atalho()
+
+    def _set_forma_pagamento(self, forma):
+        self.var_forma.set(forma)
+        self._toggle_troco()
+        if forma == "dinheiro":
+            self.entry_pago.focus_set()
+            self.entry_pago.selection_range(0, "end")
 
     def _formatar_real(self, valor):
         """Formata um float para string R$ 0,00."""
@@ -270,7 +318,74 @@ class VendasModule:
         if event.state & 0x0004 and event.state & 0x0001: # Ctrl + Shift
             messagebox.showinfo("Atalho Ctrl+Shift", "Função de desagrupar produtos acionada.")
 
+    def _on_busca_key(self, event):
+        if event.keysym in ("Return", "KP_Enter", "Escape", "Up", "Down", "Left", "Right"):
+            if event.keysym == "Escape":
+                self._fechar_lista_busca()
+            return
+
+        termo = self.entry_busca.get().strip()
+        if len(termo) < 2:
+            self._fechar_lista_busca()
+            return
+
+        produtos = self.db.listar_produtos(busca=termo)
+        if not produtos:
+            self._fechar_lista_busca()
+            return
+
+        self._mostrar_lista_busca(produtos)
+
+    def _mostrar_lista_busca(self, produtos):
+        if not self.frame_lista:
+            self.frame_lista = tk.Frame(self.parent.winfo_toplevel(), bg="#16213e", highlightbackground="#e94560", highlightthickness=1)
+            self.listbox_busca = tk.Listbox(self.frame_lista, bg="#16213e", fg="#ffffff", 
+                                           font=("Segoe UI", 11), bd=0, highlightthickness=0,
+                                           selectbackground="#e94560", selectforeground="white")
+            self.listbox_busca.pack(fill="both", expand=True)
+            self.listbox_busca.bind("<Return>", lambda e: self._selecionar_da_lista())
+            self.listbox_busca.bind("<Double-1>", lambda e: self._selecionar_da_lista())
+            self.listbox_busca.bind("<Escape>", lambda e: self._fechar_lista_busca())
+
+        self.listbox_busca.delete(0, "end")
+        self.produtos_lista = produtos
+        for p in produtos:
+            self.listbox_busca.insert("end", f"{p['nome']} - {self._formatar_real(p['preco_venda'])}")
+
+        # Posiciona o frame abaixo do entry_busca
+        x = self.entry_busca.winfo_rootx()
+        y = self.entry_busca.winfo_rooty() + self.entry_busca.winfo_height()
+        w = self.entry_busca.winfo_width()
+        h = min(200, len(produtos) * 25)
+        
+        self.frame_lista.place(x=x, y=y, width=w, height=h)
+        self.frame_lista.lift()
+
+    def _on_busca_down(self, event):
+        if self.frame_lista and self.frame_lista.winfo_viewable():
+            self.listbox_busca.focus_set()
+            self.listbox_busca.selection_set(0)
+
+    def _selecionar_da_lista(self):
+        sel = self.listbox_busca.curselection()
+        if sel:
+            produto = self.produtos_lista[sel[0]]
+            self._adicionar_ao_carrinho(produto)
+            self._fechar_lista_busca()
+            self.entry_busca.focus_set()
+
+    def _fechar_lista_busca(self):
+        if self.frame_lista:
+            self.frame_lista.place_forget()
+
     def _buscar_produto(self, event=None):
+        # Se a lista estiver aberta e houver seleção, usa ela
+        if self.frame_lista and self.frame_lista.winfo_viewable():
+            sel = self.listbox_busca.curselection()
+            if sel:
+                self._selecionar_da_lista()
+                return
+
         termo = self.entry_busca.get().strip()
         if not termo:
             return
@@ -279,6 +394,7 @@ class VendasModule:
         produto = self.db.buscar_produto_por_codigo(termo)
         if produto:
             self._adicionar_ao_carrinho(produto)
+            self._fechar_lista_busca()
             return
 
         # Busca por nome
@@ -289,8 +405,10 @@ class VendasModule:
 
         if len(produtos) == 1:
             self._adicionar_ao_carrinho(produtos[0])
+            self._fechar_lista_busca()
         else:
-            self._abrir_selecao_produto(produtos)
+            # Se houver múltiplos, a lista já deve estar aberta, mas por segurança:
+            self._mostrar_lista_busca(produtos)
 
     def _abrir_selecao_produto(self, produtos):
         dlg = tk.Toplevel(self.parent)
