@@ -1,5 +1,5 @@
 """
-Módulo de Cadastro de Produtos
+Módulo de Cadastro de Produtos e Categorias
 """
 
 import tkinter as tk
@@ -40,13 +40,11 @@ class ProdutosModule:
         self.entry_busca.bind("<KeyRelease>", lambda e: self._carregar_lista(self.entry_busca.get()))
 
         # Filtro por categoria
-        cats = [("Todas", None)] + [(c["nome"], c["id"]) for c in self.db.listar_categorias()]
         self.var_cat_filtro = tk.StringVar(value="Todas")
-        combo_cat = ttk.Combobox(frame_busca, textvariable=self.var_cat_filtro,
-                                  values=[c[0] for c in cats], width=15, state="readonly")
-        combo_cat.pack(side="left", padx=5)
-        combo_cat.bind("<<ComboboxSelected>>", lambda e: self._carregar_lista())
-        self._cats_filtro = cats
+        self.combo_cat_filtro = ttk.Combobox(frame_busca, textvariable=self.var_cat_filtro, width=15, state="readonly")
+        self.combo_cat_filtro.pack(side="left", padx=5)
+        self.combo_cat_filtro.bind("<<ComboboxSelected>>", lambda e: self._carregar_lista())
+        self._atualizar_combo_categorias()
 
         # Treeview produtos
         cols = ("id", "codigo", "nome", "categoria", "preco_custo", "preco_venda", "margem", "estoque", "unidade")
@@ -77,11 +75,36 @@ class ProdutosModule:
             ("➕ Novo Produto", self._novo_produto, "#2ecc71"),
             ("✏️ Editar", self._editar_produto, "#0f3460"),
             ("🗑️ Excluir", self._excluir_produto, "#e94560"),
+            ("🏷️ Categorias", self._abrir_categorias, "#f39c12"),
         ]:
             tk.Button(frame_btns, text=txt, command=cmd,
                       bg=cor, fg="white", font=("Segoe UI", 9, "bold"),
                       bd=0, relief="flat", padx=10, pady=6,
                       cursor="hand2").pack(side="left", padx=3)
+
+    def _formatar_real(self, valor):
+        return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    def _parse_real(self, texto):
+        try:
+            limpo = texto.replace("R$", "").replace(".", "").replace(",", ".").strip()
+            return float(limpo)
+        except ValueError:
+            return 0.0
+
+    def _on_moeda_key(self, event, entry_var):
+        if event.keysym in ("Tab", "Return", "Escape", "BackSpace", "Delete") or event.keysym.startswith("F"):
+            return
+        digits = "".join([c for c in entry_var.get() if c.isdigit()])
+        if not digits: digits = "0"
+        val = int(digits) / 100
+        formatted = f"{val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        entry_var.set(formatted)
+
+    def _atualizar_combo_categorias(self):
+        cats = [("Todas", None)] + [(c["nome"], c["id"]) for c in self.db.listar_categorias()]
+        self._cats_filtro = cats
+        self.combo_cat_filtro["values"] = [c[0] for c in cats]
 
     def _carregar_lista(self, busca=""):
         if busca and "Buscar" in busca:
@@ -89,7 +112,7 @@ class ProdutosModule:
         for row in self.tree.get_children():
             self.tree.delete(row)
 
-        cat_nome = self.var_cat_filtro.get() if hasattr(self, "var_cat_filtro") else "Todas"
+        cat_nome = self.var_cat_filtro.get()
         cat_id = None
         if cat_nome != "Todas":
             for nome, cid in self._cats_filtro:
@@ -98,25 +121,21 @@ class ProdutosModule:
 
         produtos = self.db.listar_produtos(busca=busca, categoria_id=cat_id)
         for p in produtos:
-            margem = p["margem_lucro"]
-            cor = "normal"
-            if p["estoque_atual"] <= p["estoque_minimo"]:
-                cor = "baixo"
+            cor = "baixo" if p["estoque_atual"] <= p["estoque_minimo"] else "normal"
             self.tree.insert("", "end", tags=(cor, str(p["id"])), values=(
                 p["id"],
                 p["codigo_barras"] or "—",
                 p["nome"],
                 p["categoria_nome"] or "—",
-                f"R$ {p['preco_custo']:.2f}",
-                f"R$ {p['preco_venda']:.2f}",
-                f"{margem:.1f}%",
+                self._formatar_real(p['preco_custo']),
+                self._formatar_real(p['preco_venda']),
+                f"{p['margem_lucro']:.1f}%",
                 f"{p['estoque_atual']:.3f}",
                 p["unidade"],
             ))
         self.tree.tag_configure("baixo", foreground="#e74c3c")
 
     def _abrir_formulario(self, produto=None):
-        """Abre uma janela pop-up para cadastro ou edição de produto."""
         self.janela_form = tk.Toplevel(self.parent)
         self.janela_form.title("Cadastro de Produto" if not produto else "Editar Produto")
         self.janela_form.geometry("500x700")
@@ -124,36 +143,23 @@ class ProdutosModule:
         self.janela_form.transient(self.parent.winfo_toplevel())
         self.janela_form.grab_set()
         
-        # Centraliza a janela
-        self.janela_form.update_idletasks()
-        x = (self.janela_form.winfo_screenwidth() // 2) - (self.janela_form.winfo_width() // 2)
-        y = (self.janela_form.winfo_screenheight() // 2) - (self.janela_form.winfo_height() // 2)
-        self.janela_form.geometry(f"+{x}+{y}")
-
         canvas = tk.Canvas(self.janela_form, bg="#1a1a2e", highlightthickness=0)
         scrollbar = ttk.Scrollbar(self.janela_form, orient="vertical", command=canvas.yview)
         scrollable_frame = tk.Frame(canvas, bg="#1a1a2e")
-
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-
+        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw", width=480)
         canvas.configure(yscrollcommand=scrollbar.set)
-
         canvas.pack(side="left", fill="both", expand=True, padx=10, pady=10)
         scrollbar.pack(side="right", fill="y")
 
         frame_inner = tk.Frame(scrollable_frame, bg="#16213e", padx=20, pady=20)
         frame_inner.pack(fill="both", expand=True)
 
-        tk.Label(frame_inner, text="📦 DADOS DO PRODUTO", bg="#16213e", fg="#e94560",
-                 font=("Segoe UI", 12, "bold")).pack(pady=(0, 20))
+        tk.Label(frame_inner, text="📦 DADOS DO PRODUTO", bg="#16213e", fg="#e94560", font=("Segoe UI", 12, "bold")).pack(pady=(0, 20))
 
         self.form_widgets = {}
 
-        def criar_campo(label, chave, tipo="entry", opcoes=None, multiline=False):
+        def criar_campo(label, chave, tipo="entry", opcoes=None, multiline=False, moeda=False):
             f = tk.Frame(frame_inner, bg="#16213e")
             f.pack(fill="x", pady=5)
             tk.Label(f, text=label, bg="#16213e", fg="#a0a0c0", font=("Segoe UI", 10)).pack(anchor="w")
@@ -171,20 +177,21 @@ class ProdutosModule:
                 var = tk.StringVar()
                 w = tk.Entry(f, textvariable=var, bg="#0f3460", fg="white", font=("Segoe UI", 11), bd=0, relief="flat", insertbackground="white")
                 w.pack(fill="x", ipady=8, pady=(2, 0))
+                if moeda:
+                    w.bind("<KeyRelease>", lambda e: self._on_moeda_key(e, var))
                 self.form_widgets[chave] = (w, var)
             return w
 
-        # Código de barras especial
+        # Código de barras
         f_cod = tk.Frame(frame_inner, bg="#16213e")
         f_cod.pack(fill="x", pady=5)
         tk.Label(f_cod, text="Código de Barras:", bg="#16213e", fg="#a0a0c0", font=("Segoe UI", 10)).pack(anchor="w")
         f_cod_inner = tk.Frame(f_cod, bg="#16213e")
         f_cod_inner.pack(fill="x", pady=(2, 0))
         self.var_codigo = tk.StringVar()
-        self.entry_codigo = tk.Entry(f_cod_inner, textvariable=self.var_codigo, bg="#0f3460", fg="white", font=("Segoe UI", 11), bd=0, relief="flat", insertbackground="white")
-        self.entry_codigo.pack(side="left", fill="x", expand=True, ipady=8)
+        tk.Entry(f_cod_inner, textvariable=self.var_codigo, bg="#0f3460", fg="white", font=("Segoe UI", 11), bd=0, relief="flat", insertbackground="white").pack(side="left", fill="x", expand=True, ipady=8)
         tk.Button(f_cod_inner, text="🔁", command=self._gerar_codigo, bg="#0f3460", fg="white", bd=0, relief="flat", padx=10).pack(side="right", fill="y")
-        self.form_widgets["codigo_barras"] = (self.entry_codigo, self.var_codigo)
+        self.form_widgets["codigo_barras"] = (None, self.var_codigo)
 
         criar_campo("Nome:", "nome")
         criar_campo("Descrição:", "descricao", multiline=True)
@@ -192,22 +199,24 @@ class ProdutosModule:
         cats_nomes = [c["nome"] for c in self.db.listar_categorias()]
         criar_campo("Categoria:", "categoria", tipo="combo", opcoes=cats_nomes)
         
-        criar_campo("Preço de Custo (R$):", "preco_custo")
+        criar_campo("Preço de Custo (R$):", "preco_custo", moeda=True)
         criar_campo("Margem de Lucro (%):", "margem_lucro")
         
         # Preço de Venda
         f_venda = tk.Frame(frame_inner, bg="#16213e")
         f_venda.pack(fill="x", pady=5)
         tk.Label(f_venda, text="Preço de Venda (R$):", bg="#16213e", fg="#a0a0c0", font=("Segoe UI", 10)).pack(anchor="w")
-        self.var_preco_venda = tk.StringVar(value="0.00")
-        tk.Entry(f_venda, textvariable=self.var_preco_venda, bg="#0f3460", fg="#2ecc71", font=("Segoe UI", 12, "bold"), bd=0, relief="flat", insertbackground="white").pack(fill="x", ipady=8, pady=(2, 0))
-        self.form_widgets["preco_venda"] = (None, self.var_preco_venda)
+        self.var_preco_venda = tk.StringVar(value="0,00")
+        ent_venda = tk.Entry(f_venda, textvariable=self.var_preco_venda, bg="#0f3460", fg="#2ecc71", font=("Segoe UI", 12, "bold"), bd=0, relief="flat", insertbackground="white")
+        ent_venda.pack(fill="x", ipady=8, pady=(2, 0))
+        ent_venda.bind("<KeyRelease>", lambda e: self._on_moeda_key(e, self.var_preco_venda))
+        self.form_widgets["preco_venda"] = (ent_venda, self.var_preco_venda)
 
         criar_campo("Estoque Mínimo:", "estoque_minimo")
         unidades = ["UN", "KG", "G", "L", "ML", "CX", "PCT", "DZ", "M", "M²"]
         criar_campo("Unidade:", "unidade", tipo="combo", opcoes=unidades)
 
-        # Binds para cálculo de preço
+        # Binds para cálculo automático
         self.form_widgets["preco_custo"][1].trace_add("write", self._calcular_preco_venda)
         self.form_widgets["margem_lucro"][1].trace_add("write", self._calcular_preco_venda)
 
@@ -216,24 +225,19 @@ class ProdutosModule:
             self.form_widgets["nome"][1].set(produto["nome"])
             if isinstance(self.form_widgets["descricao"], tk.Text):
                 self.form_widgets["descricao"].insert("1.0", produto["descricao"] or "")
-            
-            # Seleciona categoria
             for c in self.db.listar_categorias():
                 if c["id"] == produto["categoria_id"]:
                     self.form_widgets["categoria"][1].set(c["nome"])
                     break
-            
-            self.form_widgets["preco_custo"][1].set(f"{produto['preco_custo']:.2f}")
+            self.form_widgets["preco_custo"][1].set(f"{produto['preco_custo']:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
             self.form_widgets["margem_lucro"][1].set(f"{produto['margem_lucro']:.2f}")
-            self.var_preco_venda.set(f"{produto['preco_venda']:.2f}")
+            self.var_preco_venda.set(f"{produto['preco_venda']:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
             self.form_widgets["estoque_minimo"][1].set(f"{produto['estoque_minimo']:.3f}")
             self.form_widgets["unidade"][1].set(produto["unidade"] or "UN")
 
-        # Botões
-        btn_salvar = tk.Button(frame_inner, text="💾 SALVAR PRODUTO", command=self._salvar_produto,
-                               bg="#2ecc71", fg="white", font=("Segoe UI", 11, "bold"),
-                               bd=0, relief="flat", pady=15, cursor="hand2")
-        btn_salvar.pack(fill="x", pady=(30, 10))
+        tk.Button(frame_inner, text="💾 SALVAR PRODUTO", command=self._salvar_produto,
+                   bg="#2ecc71", fg="white", font=("Segoe UI", 11, "bold"),
+                   bd=0, relief="flat", pady=15, cursor="hand2").pack(fill="x", pady=(30, 10))
         
         tk.Button(frame_inner, text="❌ CANCELAR", command=self.janela_form.destroy,
                   bg="#16213e", fg="#a0a0c0", font=("Segoe UI", 10),
@@ -241,18 +245,15 @@ class ProdutosModule:
 
     def _calcular_preco_venda(self, *args):
         try:
-            custo_str = self.form_widgets["preco_custo"][1].get().replace(",", ".")
+            custo = self._parse_real(self.form_widgets["preco_custo"][1].get())
             margem_str = self.form_widgets["margem_lucro"][1].get().replace(",", ".")
-            custo = float(custo_str) if custo_str else 0
             margem = float(margem_str) if margem_str else 0
             preco = custo * (1 + margem / 100)
-            self.var_preco_venda.set(f"{preco:.2f}")
-        except ValueError:
-            pass
+            self.var_preco_venda.set(f"{preco:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+        except ValueError: pass
 
     def _gerar_codigo(self):
-        codigo = "".join(random.choices(string.digits, k=13))
-        self.var_codigo.set(codigo)
+        self.var_codigo.set("".join(random.choices(string.digits, k=13)))
 
     def _novo_produto(self):
         self.produto_editando = None
@@ -260,11 +261,8 @@ class ProdutosModule:
 
     def _editar_produto(self):
         sel = self.tree.selection()
-        if not sel:
-            messagebox.showinfo("Aviso", "Selecione um produto para editar.")
-            return
-        tags = self.tree.item(sel[0], "tags")
-        pid = int([t for t in tags if t.isdigit()][0])
+        if not sel: return
+        pid = int([t for t in self.tree.item(sel[0], "tags") if t.isdigit()][0])
         p = self.db.buscar_produto_por_id(pid)
         if p:
             self.produto_editando = pid
@@ -272,10 +270,8 @@ class ProdutosModule:
 
     def _excluir_produto(self):
         sel = self.tree.selection()
-        if not sel:
-            return
-        tags = self.tree.item(sel[0], "tags")
-        pid = int([t for t in tags if t.isdigit()][0])
+        if not sel: return
+        pid = int([t for t in self.tree.item(sel[0], "tags") if t.isdigit()][0])
         nome = self.tree.item(sel[0], "values")[2]
         if messagebox.askyesno("Confirmar", f"Excluir produto '{nome}'?"):
             self.db.excluir_produto(pid)
@@ -283,47 +279,77 @@ class ProdutosModule:
 
     def _salvar_produto(self):
         def get_val(chave):
-            if chave not in self.form_widgets: return ""
             w = self.form_widgets[chave]
             return w[1].get().strip() if isinstance(w, tuple) else w.get("1.0", "end").strip()
 
         nome = get_val("nome")
         if not nome:
-            messagebox.showwarning("Aviso", "O nome do produto é obrigatório.")
+            messagebox.showwarning("Aviso", "O nome é obrigatório.")
             return
-
-        try:
-            preco_custo = float(get_val("preco_custo").replace(",", ".") or "0")
-            margem = float(get_val("margem_lucro").replace(",", ".") or "0")
-            preco_venda = float(self.var_preco_venda.get().replace(",", ".") or "0")
-        except ValueError:
-            messagebox.showerror("Erro", "Valores numéricos inválidos.")
-            return
-
-        cat_nome = get_val("categoria")
-        cat_id = next((c["id"] for c in self.db.listar_categorias() if c["nome"] == cat_nome), None)
 
         dados = {
             "id": self.produto_editando,
             "codigo_barras": self.var_codigo.get() or None,
             "nome": nome,
             "descricao": get_val("descricao"),
-            "categoria_id": cat_id,
+            "categoria_id": next((c["id"] for c in self.db.listar_categorias() if c["nome"] == get_val("categoria")), None),
             "fornecedor_id": None,
-            "preco_custo": preco_custo,
-            "preco_venda": preco_venda,
-            "margem_lucro": margem,
+            "preco_custo": self._parse_real(get_val("preco_custo")),
+            "preco_venda": self._parse_real(self.var_preco_venda.get()),
+            "margem_lucro": float(get_val("margem_lucro").replace(",", ".") or "0"),
             "estoque_atual": 0,
             "estoque_minimo": float(get_val("estoque_minimo").replace(",", ".") or "0"),
             "unidade": get_val("unidade") or "UN",
             "ativo": 1,
         }
+        self.db.salvar_produto(dados)
+        self._carregar_lista()
+        self.janela_form.destroy()
+        messagebox.showinfo("Sucesso", "Produto salvo!")
 
-        try:
-            self.db.salvar_produto(dados)
-            self._carregar_lista()
-            if hasattr(self, 'janela_form'):
-                self.janela_form.destroy()
-            messagebox.showinfo("Sucesso", f"Produto '{nome}' salvo com sucesso!")
-        except Exception as e:
-            messagebox.showerror("Erro ao Salvar", f"Erro: {str(e)}")
+    def _abrir_categorias(self):
+        dlg = tk.Toplevel(self.parent)
+        dlg.title("Gerenciar Categorias")
+        dlg.geometry("400x500")
+        dlg.configure(bg="#1a1a2e")
+        dlg.transient(self.parent.winfo_toplevel())
+        dlg.grab_set()
+
+        frame = tk.Frame(dlg, bg="#16213e", padx=15, pady=15)
+        frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        tk.Label(frame, text="Nova Categoria:", bg="#16213e", fg="#e0e0e0").pack(anchor="w")
+        ent = tk.Entry(frame, bg="#0f3460", fg="white", font=("Segoe UI", 11), bd=0)
+        ent.pack(fill="x", ipady=8, pady=5)
+
+        tree = ttk.Treeview(frame, columns=("id", "nome"), show="headings", height=10)
+        tree.heading("id", text="ID")
+        tree.heading("nome", text="Nome")
+        tree.column("id", width=50)
+        tree.pack(fill="both", expand=True, pady=10)
+
+        def carregar():
+            for i in tree.get_children(): tree.delete(i)
+            for c in self.db.listar_categorias():
+                tree.insert("", "end", values=(c["id"], c["nome"]))
+        carregar()
+
+        def add():
+            nome = ent.get().strip()
+            if nome:
+                self.db.get_conn().execute("INSERT INTO categorias (nome) VALUES (?)", (nome,)).connection.commit()
+                ent.delete(0, "end")
+                carregar()
+                self._atualizar_combo_categorias()
+        
+        tk.Button(frame, text="➕ Adicionar", command=add, bg="#2ecc71", fg="white", bd=0, pady=8).pack(fill="x")
+        
+        def delete():
+            sel = tree.selection()
+            if sel:
+                cid = tree.item(sel[0], "values")[0]
+                self.db.get_conn().execute("DELETE FROM categorias WHERE id=?", (cid,)).connection.commit()
+                carregar()
+                self._atualizar_combo_categorias()
+        
+        tk.Button(frame, text="🗑️ Excluir Selecionada", command=delete, bg="#e94560", fg="white", bd=0, pady=8).pack(fill="x", pady=5)

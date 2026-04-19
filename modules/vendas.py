@@ -226,10 +226,25 @@ class VendasModule:
         self.parent.winfo_toplevel().bind("<Control-f11>", lambda e: self._consultar_vendas_atalho())
         self.parent.winfo_toplevel().bind("<Control-Shift-KeyPress>", self._desagrupar_atalho)
 
+    def _formatar_real(self, valor):
+        """Formata um float para string R$ 0,00."""
+        return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    def _parse_real(self, texto):
+        """Converte string R$ 0,00 para float."""
+        try:
+            limpo = texto.replace("R$", "").replace(".", "").replace(",", ".").strip()
+            return float(limpo)
+        except ValueError:
+            return 0.0
+
     def _on_pago_key(self, event):
         """Máscara de moeda para o campo de valor pago."""
-        if event.keysym in ("Tab", "Return", "Escape", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"):
-            return
+        if event.keysym in ("Tab", "Return", "Escape", "BackSpace", "Delete") or event.keysym.startswith("F"):
+            if event.keysym in ("BackSpace", "Delete"):
+                pass # deixa processar
+            else:
+                return
         
         # Pega apenas números
         digits = "".join([c for c in self.entry_pago.get() if c.isdigit()])
@@ -238,11 +253,12 @@ class VendasModule:
         
         val = int(digits) / 100
         self.entry_pago.delete(0, "end")
-        self.entry_pago.insert(0, f"{val:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+        formatted = f"{val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        self.entry_pago.insert(0, formatted)
         self._calcular_troco()
 
     def _alterar_valor_atalho(self):
-        """Atalho F5 para alterar valor (não implementado no original, mas solicitado)."""
+        """Atalho F5 para alterar valor."""
         messagebox.showinfo("Atalho F5", "Para alterar o valor, edite o produto no cadastro ou aplique desconto (F10).")
 
     def _consultar_vendas_atalho(self):
@@ -291,7 +307,7 @@ class VendasModule:
         tree.pack(fill="both", expand=True)
 
         for p in produtos:
-            tree.insert("", "end", values=(p["id"], p["nome"], f"R$ {p['preco_venda']:.2f}"))
+            tree.insert("", "end", values=(p["id"], p["nome"], self._formatar_real(p["preco_venda"])))
 
         def confirmar():
             sel = tree.selection()
@@ -307,7 +323,8 @@ class VendasModule:
 
     def _adicionar_ao_carrinho(self, produto):
         try:
-            qtd = float(self.spin_qtd.get().replace(",", "."))
+            qtd_str = self.spin_qtd.get().replace(",", ".")
+            qtd = float(qtd_str)
         except ValueError:
             qtd = 1.0
 
@@ -345,8 +362,8 @@ class VendasModule:
         for it in self.carrinho:
             self.tree_carrinho.insert("", "end", values=(
                 it["codigo_barras"] or "—", it["nome"], f"{it['quantidade']:.3f}",
-                f"R$ {it['preco_unitario']:.2f}", f"{it['desconto']:.1f}%",
-                f"R$ {it['subtotal']:.2f}"
+                self._formatar_real(it["preco_unitario"]), f"{it['desconto']:.1f}%",
+                self._formatar_real(it["subtotal"])
             ))
 
     def _atualizar_totais(self):
@@ -359,20 +376,18 @@ class VendasModule:
         valor_desconto = subtotal * (desc_geral / 100)
         total = subtotal - valor_desconto
 
-        self.lbl_subtotal.config(text=f"R$ {subtotal:.2f}")
-        self.lbl_desconto.config(text=f"R$ {valor_desconto:.2f}")
-        self.lbl_total.config(text=f"R$ {total:.2f}")
+        self.lbl_subtotal.config(text=self._formatar_real(subtotal))
+        self.lbl_desconto.config(text=self._formatar_real(valor_desconto))
+        self.lbl_total.config(text=self._formatar_real(total))
         self._calcular_troco()
 
     def _calcular_troco(self, event=None):
         try:
-            total_str = self.lbl_total.cget("text").replace("R$ ", "").replace(".", "").replace(",", ".")
-            total = float(total_str)
-            pago_str = self.entry_pago.get().replace(".", "").replace(",", ".")
-            pago = float(pago_str)
+            total = self._parse_real(self.lbl_total.cget("text"))
+            pago = self._parse_real(self.entry_pago.get())
             troco = max(0, pago - total)
-            self.lbl_troco.config(text=f"R$ {troco:.2f}")
-        except ValueError:
+            self.lbl_troco.config(text=self._formatar_real(troco))
+        except Exception:
             self.lbl_troco.config(text="R$ 0,00")
 
     def _toggle_troco(self):
@@ -393,7 +408,6 @@ class VendasModule:
         self._atualizar_totais()
 
     def _editar_item(self):
-        # Implementação simplificada para o exemplo
         messagebox.showinfo("Editar", "Selecione o item e use os atalhos para alterar quantidade.")
 
     def _limpar_carrinho(self):
@@ -444,23 +458,18 @@ class VendasModule:
             messagebox.showwarning("Carrinho vazio", "Adicione produtos antes de finalizar.")
             return
 
-        total_str = self.lbl_total.cget("text").replace("R$ ", "").replace(".", "").replace(",", ".")
-        total = float(total_str)
-        subtotal_str = self.lbl_subtotal.cget("text").replace("R$ ", "").replace(".", "").replace(",", ".")
-        subtotal = float(subtotal_str)
-        desconto_str = self.lbl_desconto.cget("text").replace("R$ ", "").replace(".", "").replace(",", ".")
-        desconto = float(desconto_str)
+        total = self._parse_real(self.lbl_total.cget("text"))
+        subtotal = self._parse_real(self.lbl_subtotal.cget("text"))
+        desconto = self._parse_real(self.lbl_desconto.cget("text"))
 
         forma = self.var_forma.get()
-        try:
-            pago_str = self.entry_pago.get().replace(".", "").replace(",", ".")
-            pago = float(pago_str)
-        except ValueError:
+        pago = self._parse_real(self.entry_pago.get())
+        if forma != "dinheiro":
             pago = total
 
         if forma == "dinheiro" and pago < total:
             messagebox.showwarning("Pagamento insuficiente",
-                                   f"Valor pago R$ {pago:.2f} é menor que o total R$ {total:.2f}")
+                                   f"Valor pago {self._formatar_real(pago)} é menor que o total {self._formatar_real(total)}")
             return
 
         troco = max(0, pago - total)
@@ -492,8 +501,8 @@ class VendasModule:
 
         messagebox.showinfo("✅ Venda Finalizada",
                             f"Venda #{venda_id} realizada!\n"
-                            f"Total: R$ {total:.2f}\n"
-                            f"Troco: R$ {troco:.2f}")
+                            f"Total: {self._formatar_real(total)}\n"
+                            f"Troco: {self._formatar_real(troco)}")
 
         self.carrinho = []
         self._atualizar_tree()
